@@ -1,7 +1,17 @@
 from datetime import datetime
 from typing import Optional
 
+from ninja import File
+from ninja import Form
 from ninja import Schema
+from ninja.files import UploadedFile
+
+
+class PostCreateSchema(Schema):
+    caption: Optional[str] = None
+    themes: list[int]
+    media_url: Optional[Form[str]] = None
+    media_file: Optional[File[UploadedFile]] = None
 
 
 class PostSchema(Schema):
@@ -41,10 +51,6 @@ class ShareCreateSchema(Schema):
 
 class ShareResponseSchema(Schema):
     slug: str
-
-
-class FeedExcludeSchema(Schema):
-    exclude_ids: Optional[list[int]] = None
 
 
 class PaginatedPostsSchema(Schema):

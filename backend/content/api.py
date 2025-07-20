@@ -1,12 +1,13 @@
 from typing import Optional
 
+from django.db import transaction
 from django.db.models import Count
 from django.db.models import Exists
 from django.db.models import OuterRef
-from django.db.models import Q
-from django.utils import timezone
+from ninja import Form
 from ninja import Query
 from ninja import Router
+from ninja.errors import ValidationError
 
 from content.models import Comment
 from content.models import Follow
@@ -17,8 +18,8 @@ from content.models import Save
 from content.models import Share
 from content.schemas import CommentCreateSchema
 from content.schemas import CommentSchema
-from content.schemas import FeedExcludeSchema
 from content.schemas import PaginatedPostsSchema
+from content.schemas import PostCreateSchema
 from content.schemas import PostSchema
 from content.schemas import ShareCreateSchema
 from content.schemas import ShareResponseSchema
@@ -241,4 +242,37 @@ def track_share_click(request, slug: str):
         "shared_by_user_id": share.user.id,
         "media_url": share.post.media_url,
         "caption": share.post.caption,
+    }
+
+
+@content_router.post("/posts/", auth=auth)
+def create_post(request, post: Form[PostCreateSchema]):
+    user = request.auth
+
+    if not post.media_url and not post.media_file:
+        raise ValidationError(
+            [
+                {
+                    "Must provide either post url or file": "Either media_url or media_file must be provided"
+                }
+            ]
+        )
+
+    with transaction.atomic():
+        post_obj = Post(author=user, caption=post.caption)
+
+        if post.media_file:
+            post_obj.media_file = post.media_file
+            post_obj.media_url = None
+        else:
+            post_obj.media_url = post.media_url
+            post_obj.media_file = None
+
+        post_obj.save()
+        post_obj.themes.set(post.themes)
+
+    return {
+        "id": post_obj.id,
+        "media": post_obj.media(),
+        "caption": post_obj.caption,
     }
