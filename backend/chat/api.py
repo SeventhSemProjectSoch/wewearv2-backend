@@ -1,10 +1,9 @@
-from typing import Annotated
+from typing import cast
 
 from django.db.models import Max
 from django.db.models import Q
 from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
-from ninja import Query
 from ninja import Router
 
 from content.models import Follow
@@ -27,7 +26,7 @@ def are_mutual_followers(user1: User, user2: User) -> bool:
 
 @chat_router.post("/send/", response=MessageOut)
 def send_message(request: HttpRequest, payload: MessageIn):
-    sender = request.user
+    sender = cast(User, request.user)
     receiver = get_object_or_404(User, id=payload.receiver_id)
 
     if sender != receiver and not are_mutual_followers(sender, receiver):
@@ -44,11 +43,11 @@ def send_message(request: HttpRequest, payload: MessageIn):
 @chat_router.get("/history/", response=list[MessageOut])
 def conversation_history(
     request: HttpRequest,
-    with_user_id: Annotated[int, Query()],
-    limit: Annotated[int, Query(20, ge=1, le=50)] = 20,
-    offset: Annotated[int, Query(0, ge=0)] = 0,
+    with_user_id: str,
+    limit: int = 20,
+    offset: int = 0,
 ):
-    user = request.user
+    user = cast(User, request.user)
     other_user = get_object_or_404(User, id=with_user_id)
 
     qs = Message.objects.filter(
@@ -61,11 +60,10 @@ def conversation_history(
 @chat_router.get("/conversations/", response=list[ConversationOut])
 def list_conversations(
     request: HttpRequest,
-    limit: Annotated[int, Query(20, ge=1, le=50)] = 20,
-    offset: Annotated[int, Query(0, ge=0)] = 0,
+    limit: int = 20,
+    offset: int = 0,
 ):
-    user = request.user
-    # last message per user pair
+    user = cast(User, request.user)
     qs = (
         Message.objects.filter(Q(sender=user) | Q(receiver=user))
         .values("sender", "receiver")
@@ -73,8 +71,7 @@ def list_conversations(
         .order_by("-last_timestamp")
     )
 
-    # get distinct users the current user has chatted with
-    seen = set()
+    seen: set[str] = set()
     conversations: list[ConversationOut] = []
     for row in qs:
         other_id = (
@@ -92,7 +89,7 @@ def list_conversations(
             .order_by("-created_at")
             .first()
         )
-        if last_msg:
+        if last_msg and other_user.username:
             conversations.append(
                 ConversationOut(
                     user_id=other_user.id,
