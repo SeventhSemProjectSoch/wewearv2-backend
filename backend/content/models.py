@@ -1,34 +1,21 @@
 import uuid
-from datetime import datetime
 from typing import Any
 
-from django.conf import settings
 from django.core.files.storage import FileSystemStorage
 from django.db import models
 
+from core.models import BaseModel
 from users.models import Theme
+from users.models import User
 
-UserModel = settings.AUTH_USER_MODEL
 media_storage = FileSystemStorage(location="media/posts")
-
-
-class BaseModel(models.Model):
-    id: models.BigAutoField[int, int] = models.BigAutoField(primary_key=True)
-    created_at: models.DateTimeField[
-        datetime, datetime
-    ] = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        abstract = True
 
 
 class Post(BaseModel):
     author: models.ForeignKey[
-        UserModel,
-        UserModel,
-    ] = models.ForeignKey(
-        UserModel, on_delete=models.CASCADE, related_name="posts"
-    )
+        User,
+        User,
+    ] = models.ForeignKey(User, on_delete=models.CASCADE, related_name="posts")
     media_url: models.CharField[str, str | None] = models.URLField(
         blank=True, null=True
     )
@@ -57,16 +44,16 @@ class Post(BaseModel):
 
 class Follow(BaseModel):
     follower: models.ForeignKey[
-        UserModel,
-        UserModel,
+        User,
+        User,
     ] = models.ForeignKey(
-        UserModel, on_delete=models.CASCADE, related_name="following"
+        User, on_delete=models.CASCADE, related_name="following"
     )
     following: models.ForeignKey[
-        UserModel,
-        UserModel,
+        User,
+        User,
     ] = models.ForeignKey(
-        UserModel, on_delete=models.CASCADE, related_name="followers"
+        User, on_delete=models.CASCADE, related_name="followers"
     )
 
     class Meta(BaseModel.Meta):
@@ -75,11 +62,9 @@ class Follow(BaseModel):
 
 class Like(BaseModel):
     user: models.ForeignKey[
-        UserModel,
-        UserModel,
-    ] = models.ForeignKey(
-        UserModel, on_delete=models.CASCADE, related_name="likes"
-    )
+        User,
+        User,
+    ] = models.ForeignKey(User, on_delete=models.CASCADE, related_name="likes")
     post: models.ForeignKey[
         Post,
         Post,
@@ -91,11 +76,9 @@ class Like(BaseModel):
 
 class Save(BaseModel):
     user: models.ForeignKey[
-        UserModel,
-        UserModel,
-    ] = models.ForeignKey(
-        UserModel, on_delete=models.CASCADE, related_name="saves"
-    )
+        User,
+        User,
+    ] = models.ForeignKey(User, on_delete=models.CASCADE, related_name="saves")
     post: models.ForeignKey[
         Post,
         Post,
@@ -107,10 +90,10 @@ class Save(BaseModel):
 
 class Comment(BaseModel):
     user: models.ForeignKey[
-        UserModel,
-        UserModel,
+        User,
+        User,
     ] = models.ForeignKey(
-        UserModel, on_delete=models.CASCADE, related_name="comments"
+        User, on_delete=models.CASCADE, related_name="comments"
     )
     post: models.ForeignKey[
         Post,
@@ -123,10 +106,10 @@ class Comment(BaseModel):
 
 class Share(BaseModel):
     user: models.ForeignKey[
-        UserModel,
-        UserModel,
+        User,
+        User,
     ] = models.ForeignKey(
-        UserModel, on_delete=models.CASCADE, related_name="shares"
+        User, on_delete=models.CASCADE, related_name="shares"
     )
     post: models.ForeignKey[
         Post,
@@ -146,10 +129,10 @@ class Share(BaseModel):
 
 class Impression(BaseModel):
     user: models.ForeignKey[
-        UserModel,
-        UserModel,
+        User,
+        User,
     ] = models.ForeignKey(
-        UserModel, on_delete=models.CASCADE, related_name="impressions"
+        User, on_delete=models.CASCADE, related_name="impressions"
     )
     post: models.ForeignKey[
         Post,

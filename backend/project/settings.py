@@ -46,10 +46,12 @@ CSRF_TRUSTED_ORIGINS = ENV.CSRF_TRUSTED_ORIGINS.split(",")
 # Application definition
 
 INSTALLED_APPS = [
-    "core",
-    "users",
+    "chat",
     "content",
+    "core",
     "notifications",
+    "search",
+    "users",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
