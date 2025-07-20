@@ -16,7 +16,7 @@ class PostCreateSchema(Schema):
 class PostSchema(Schema):
     id: int
     author_id: str
-    author_username: str
+    author_username: str | None
     media_url: str | None
     caption: str | None
     themes: list[str]

@@ -62,7 +62,7 @@ def _serialize_post(user: User, post: Post) -> PostSchema:
 
 
 @content_router.get("/feeds/foryou/", response=PostSchema | None, auth=auth)
-def feed_for_you(request: HttpRequest, exclude_ids: list[int] = []):
+def feed_for_you(request: HttpRequest, exclude_ids: list[str] = []):
     user = cast(User, request.user)
 
     base_qs = Post.objects.exclude(author=user)
