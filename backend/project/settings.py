@@ -58,7 +58,10 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    # external module
+    "channels",  # for websocket chattings
 ]
+SGI_APPLICATION = "project.asgi.application"
 
 MIDDLEWARE = [
     "whitenoise.middleware.WhiteNoiseMiddleware",
