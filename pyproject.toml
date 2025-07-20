@@ -1,0 +1,39 @@
+[project]
+name = "https://github.com/SeventhSemProjectSoch/wewearv2-backend"
+version = "1.0.0"
+requires-python = ">=3.11"
+dependencies = [
+    "Django",
+    "django-types",
+    "django-stubs-ext",
+    "gunicorn",
+    "psycopg2-binary",
+    "pydantic",
+    "pydantic-settings",
+    "whitenoise",
+]
+
+[project.optional-dependencies]
+pre-commit = ["pre-commit"]
+
+[tool.isort]
+profile = "black"
+src_paths = ["backend"]
+skip = ["migrations"]
+line_length = 79
+force_single_line = true
+
+[tool.black]
+force-exclude = '/(migrations)/'
+line-length = 79
+preview = true
+enable-unstable-feature = ["string_processing"]
+
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+typeCheckingMode = "strict"
+executionEnvironments = [{ root = "backend" }]
+include = ["backend"]
+exclude = ["**/.venv", "**/migrations"]
