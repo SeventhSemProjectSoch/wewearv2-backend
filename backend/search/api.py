@@ -11,7 +11,7 @@ from .schemas import PostOut
 from .schemas import ThemeOut
 from .schemas import UserOut
 
-router = Router(tags=["Search"])
+search_router = Router(tags=["Search"])
 
 
 def extract_hashtags(caption: str | None) -> list[str]:
@@ -22,7 +22,7 @@ def extract_hashtags(caption: str | None) -> list[str]:
     return re.findall(r"#(\w+)", caption.lower())
 
 
-@router.get("/users/", response=list[UserOut])
+@search_router.get("/users/", response=list[UserOut])
 def search_users(
     request: HttpRequest,
     q: str,
@@ -37,7 +37,7 @@ def search_users(
     return qs
 
 
-@router.get("/posts/", response=list[PostOut])
+@search_router.get("/posts/", response=list[PostOut])
 def search_posts(
     request: HttpRequest,
     q: str,
@@ -71,7 +71,7 @@ def search_posts(
     return results
 
 
-@router.get("/themes/", response=list[ThemeOut])
+@search_router.get("/themes/", response=list[ThemeOut])
 def search_themes(
     request: HttpRequest,
     q: str,

@@ -6,6 +6,7 @@ from ninja import NinjaAPI
 
 from content.api import content_router
 from notifications.api import notifications_router
+from search.api import router as search_router
 from users.api import profile_router
 from users.api import users_router
 
@@ -13,7 +14,7 @@ api = NinjaAPI()
 api.add_router("/auth/", users_router)
 api.add_router("/profile/", profile_router)
 api.add_router("/content/", content_router)
-
+api.add_router("/search", search_router)
 api.add_router("/notifications", notifications_router)
 
 urlpatterns = [
