@@ -18,6 +18,11 @@ class Environment(BaseSettings):
     CSRF_TRUSTED_ORIGINS: str = "http://127.0.0.1:8000"
     SECRET_KEY: str = token_urlsafe(127)
     SECRET_KEY_FILE: Path | None = None
+    # login
+    OTP_LENGTH: int = 5
+    # auth token
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_DAYS: int = 30
 
 
 ENV = Environment()
