@@ -1,34 +1,50 @@
 import uuid
-from typing import Optional
+from datetime import datetime
+from typing import Any
 
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
 from django.db import models
-from django.utils import timezone
 
 from users.models import Theme
-from users.models import User
 
 UserModel = settings.AUTH_USER_MODEL
 media_storage = FileSystemStorage(location="media/posts")
 
 
-class Post(models.Model):
-    id = models.BigAutoField(primary_key=True)
-    author = models.ForeignKey(
+class BaseModel(models.Model):
+    id: models.BigAutoField[int, int] = models.BigAutoField(primary_key=True)
+    created_at: models.DateTimeField[
+        datetime, datetime
+    ] = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        abstract = True
+
+
+class Post(BaseModel):
+    author: models.ForeignKey[
+        UserModel,
+        UserModel,
+    ] = models.ForeignKey(
         UserModel, on_delete=models.CASCADE, related_name="posts"
     )
-    media_url = models.URLField(blank=True, null=True)
-    media_file = models.FileField(
+    media_url: models.CharField[str, str | None] = models.URLField(
+        blank=True, null=True
+    )
+    media_file: models.FileField = models.FileField(
         upload_to="posts/",
         storage=media_storage,
         blank=True,
         null=True,
     )
 
-    caption = models.TextField(blank=True, null=True)
-    themes = models.ManyToManyField(Theme, related_name="posts")
-    created_at = models.DateTimeField(auto_now_add=True)
+    caption: models.TextField[str, str | None] = models.TextField(
+        blank=True, null=True
+    )
+    themes: models.ManyToManyField[Theme, Theme] = models.ManyToManyField(
+        Theme, related_name="posts"
+    )
 
     def media(self) -> str:
         if self.media_file:
@@ -36,93 +52,113 @@ class Post(models.Model):
         return self.media_url or ""
 
     def __str__(self) -> str:
-        return (
-            f"{self.author.username or self.author.id} - {self.caption[:20]}"
-        )
+        return f"{self.author.username or self.author.id} - {self.caption[:20] if self.caption else ''}"
 
 
-class Follow(models.Model):
-    id = models.BigAutoField(primary_key=True)
-    follower = models.ForeignKey(
+class Follow(BaseModel):
+    follower: models.ForeignKey[
+        UserModel,
+        UserModel,
+    ] = models.ForeignKey(
         UserModel, on_delete=models.CASCADE, related_name="following"
     )
-    following = models.ForeignKey(
+    following: models.ForeignKey[
+        UserModel,
+        UserModel,
+    ] = models.ForeignKey(
         UserModel, on_delete=models.CASCADE, related_name="followers"
     )
-    created_at = models.DateTimeField(auto_now_add=True)
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         unique_together = ("follower", "following")
 
 
-class Like(models.Model):
-    id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey(
+class Like(BaseModel):
+    user: models.ForeignKey[
+        UserModel,
+        UserModel,
+    ] = models.ForeignKey(
         UserModel, on_delete=models.CASCADE, related_name="likes"
     )
-    post = models.ForeignKey(
-        Post, on_delete=models.CASCADE, related_name="likes"
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
+    post: models.ForeignKey[
+        Post,
+        Post,
+    ] = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="likes")
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         unique_together = ("user", "post")
 
 
-class Save(models.Model):
-    id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey(
+class Save(BaseModel):
+    user: models.ForeignKey[
+        UserModel,
+        UserModel,
+    ] = models.ForeignKey(
         UserModel, on_delete=models.CASCADE, related_name="saves"
     )
-    post = models.ForeignKey(
-        Post, on_delete=models.CASCADE, related_name="saves"
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
+    post: models.ForeignKey[
+        Post,
+        Post,
+    ] = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="saves")
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         unique_together = ("user", "post")
 
 
-class Comment(models.Model):
-    id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey(
+class Comment(BaseModel):
+    user: models.ForeignKey[
+        UserModel,
+        UserModel,
+    ] = models.ForeignKey(
         UserModel, on_delete=models.CASCADE, related_name="comments"
     )
-    post = models.ForeignKey(
+    post: models.ForeignKey[
+        Post,
+        Post,
+    ] = models.ForeignKey(
         Post, on_delete=models.CASCADE, related_name="comments"
     )
-    text = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
+    text: models.TextField[str, str] = models.TextField()
 
 
-class Share(models.Model):
-    id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey(
+class Share(BaseModel):
+    user: models.ForeignKey[
+        UserModel,
+        UserModel,
+    ] = models.ForeignKey(
         UserModel, on_delete=models.CASCADE, related_name="shares"
     )
-    post = models.ForeignKey(
+    post: models.ForeignKey[
+        Post,
+        Post,
+    ] = models.ForeignKey(
         Post, on_delete=models.CASCADE, related_name="shares"
     )
-    slug = models.CharField(max_length=8, unique=True, db_index=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    slug: models.CharField[str, str] = models.CharField(
+        max_length=8, unique=True, db_index=True
+    )
 
-    def save(self, *args, **kwargs) -> None:
+    def save(self, *args: Any, **kwargs: Any) -> None:
         if not self.slug:
             self.slug = uuid.uuid4().hex[:8]
         super().save(*args, **kwargs)
 
 
-class Impression(models.Model):
-    id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey(
+class Impression(BaseModel):
+    user: models.ForeignKey[
+        UserModel,
+        UserModel,
+    ] = models.ForeignKey(
         UserModel, on_delete=models.CASCADE, related_name="impressions"
     )
-    post = models.ForeignKey(
+    post: models.ForeignKey[
+        Post,
+        Post,
+    ] = models.ForeignKey(
         Post, on_delete=models.CASCADE, related_name="impressions"
     )
-    created_at = models.DateTimeField(auto_now_add=True)
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         indexes = [
             models.Index(fields=["user", "post"]),
         ]

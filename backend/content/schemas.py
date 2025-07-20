@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from ninja import File
 from ninja import Form
@@ -8,18 +7,18 @@ from ninja.files import UploadedFile
 
 
 class PostCreateSchema(Schema):
-    caption: Optional[str] = None
+    caption: str | None = None
     themes: list[int]
-    media_url: Optional[Form[str]] = None
-    media_file: Optional[File[UploadedFile]] = None
+    media_url: Form[str] | None = None
+    media_file: File[UploadedFile] | None = None
 
 
 class PostSchema(Schema):
     id: int
-    author_id: int
-    author_username: Optional[str]
-    media_url: str
-    caption: Optional[str]
+    author_id: str
+    author_username: str
+    media_url: str | None
+    caption: str | None
     themes: list[str]
     created_at: datetime
 
@@ -39,8 +38,8 @@ class CommentCreateSchema(Schema):
 
 class CommentSchema(Schema):
     id: int
-    user_id: int
-    username: Optional[str]
+    user_id: str
+    username: str
     text: str
     created_at: datetime
 

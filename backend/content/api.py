@@ -1,11 +1,12 @@
-from typing import Optional
+from typing import cast
 
 from django.db import transaction
 from django.db.models import Count
 from django.db.models import Exists
 from django.db.models import OuterRef
+from django.db.models import QuerySet
+from django.http import HttpRequest
 from ninja import Form
-from ninja import Query
 from ninja import Router
 from ninja.errors import ValidationError
 
@@ -30,8 +31,7 @@ auth = JWTAuth()
 content_router = Router(tags=["Feeds and Interactions"])
 
 
-def _get_post_with_interactions(user: User, post_qs):
-    # Annotate counts
+def _get_post_with_interactions(user: User, post_qs: QuerySet[Post, Post]):
     qs = post_qs.annotate(
         likes_count=Count("likes", distinct=True),
         comments_count=Count("comments", distinct=True),
@@ -48,7 +48,7 @@ def _serialize_post(user: User, post: Post) -> PostSchema:
         id=post.id,
         author_id=post.author.id,
         author_username=post.author.username,
-        media_url=post.media_url,
+        media_url=post.media(),
         caption=post.caption,
         themes=[t.name for t in post.themes.all()],
         created_at=post.created_at,
@@ -61,46 +61,54 @@ def _serialize_post(user: User, post: Post) -> PostSchema:
     )
 
 
-@content_router.get("/feeds/foryou/", response=Optional[PostSchema], auth=auth)
-def feed_for_you(request, exclude_ids: Optional[list[int]] = Query(None)):
-    user = request.auth
-    # Base queryset excludes own posts and excludes exclude_ids if given
+@content_router.get("/feeds/foryou/", response=PostSchema | None, auth=auth)
+def feed_for_you(request: HttpRequest, exclude_ids: list[int] = []):
+    user = cast(User, request.user)
+
     base_qs = Post.objects.exclude(author=user)
     if exclude_ids:
         base_qs = base_qs.exclude(id__in=exclude_ids)
 
-    # Filter by similar body_type & overlapping themes (must have at least one matching theme)
     theme_ids = list(user.themes.values_list("id", flat=True))
     similar_body_type = user.body_type
     similar_height = user.height
     similar_weight = user.weight
 
-    # Filter posts whose author matches user on body_type, height±5, weight±5, and shares at least one theme
-    filtered_qs = base_qs.filter(
-        author__body_type=similar_body_type,
-        author__height__gte=similar_height - 5,
-        author__height__lte=similar_height + 5,
-        author__weight__gte=similar_weight - 5,
-        author__weight__lte=similar_weight + 5,
-        themes__id__in=theme_ids,
-    ).distinct()
+    if similar_height:
+        base_qs = base_qs.filter(
+            author__height__gte=similar_height - 5,
+            author__height__lte=similar_height + 5,
+        )
+
+    if similar_weight:
+        base_qs = base_qs.filter(
+            author__weight__gte=similar_weight - 5,
+            author__weight__lte=similar_weight + 5,
+        )
+
+    if similar_body_type:
+        base_qs = base_qs.filter(
+            author__body_type=similar_body_type,
+        )
+    if theme_ids:
+        base_qs = base_qs.filter(
+            themes__id__in=theme_ids,
+        )
+    filtered_qs = base_qs.distinct()
 
     qs = _get_post_with_interactions(user, filtered_qs)
-    # Random order, pick one or None
+
     post = qs.order_by("?").first()
 
     if post:
-        # Log impression
         Impression.objects.create(user=user, post=post)
         return _serialize_post(user, post)
     return None
 
 
-@content_router.get(
-    "/feeds/friends/", response=Optional[PostSchema], auth=auth
-)
-def feed_friends(request, exclude_ids: Optional[list[int]] = Query(None)):
-    user = request.auth
+@content_router.get("/feeds/friends/", response=PostSchema | None, auth=auth)
+def feed_friends(request: HttpRequest, exclude_ids: list[int] = []):
+    user = cast(User, request.user)
     following_ids = Follow.objects.filter(follower=user).values_list(
         "following_id", flat=True
     )
@@ -116,11 +124,9 @@ def feed_friends(request, exclude_ids: Optional[list[int]] = Query(None)):
     return None
 
 
-@content_router.get(
-    "/feeds/explore/", response=Optional[PostSchema], auth=auth
-)
-def feed_explore(request, exclude_ids: Optional[list[int]] = Query(None)):
-    user = request.auth
+@content_router.get("/feeds/explore/", response=PostSchema | None, auth=auth)
+def feed_explore(request: HttpRequest, exclude_ids: list[int] = []):
+    user = cast(User, request.user)
     following_ids = set(
         Follow.objects.filter(follower=user).values_list(
             "following_id", flat=True
@@ -132,7 +138,6 @@ def feed_explore(request, exclude_ids: Optional[list[int]] = Query(None)):
     if exclude_ids:
         base_qs = base_qs.exclude(id__in=exclude_ids)
 
-    # Exclude posts from users you follow and posts that share user's themes
     filtered_qs = (
         base_qs.exclude(author_id__in=following_ids)
         .exclude(themes__id__in=user_theme_ids)
@@ -149,9 +154,11 @@ def feed_explore(request, exclude_ids: Optional[list[int]] = Query(None)):
 
 @content_router.get("/feeds/upload/", response=PaginatedPostsSchema, auth=auth)
 def feed_upload(
-    request, offset: int = Query(0, ge=0), limit: int = Query(20, ge=1, le=50)
+    request: HttpRequest,
+    offset: int = 0,
+    limit: int = 20,
 ):
-    user = request.auth
+    user = cast(User, request.user)
     qs = Post.objects.filter(author=user).order_by("-created_at")
     total = qs.count()
     posts = qs[offset : offset + limit]
@@ -165,30 +172,28 @@ def feed_upload(
 
 
 @content_router.post("/interactions/like/", auth=auth)
-def like_post(request, post_id: int):
-    user = request.auth
+def like_post(request: HttpRequest, post_id: int):
+    user = cast(User, request.user)
     post = Post.objects.filter(id=post_id).first()
     if not post:
         return {"error": "Post not found"}
 
     like, created = Like.objects.get_or_create(user=user, post=post)
     if not created:
-        # Already liked → unlike (toggle)
         like.delete()
         return {"liked": False}
     return {"liked": True}
 
 
 @content_router.post("/interactions/save/", auth=auth)
-def save_post(request, post_id: int):
-    user = request.user
+def save_post(request: HttpRequest, post_id: int):
+    user = cast(User, request.user)
     post = Post.objects.filter(id=post_id).first()
     if not post:
         return {"error": "Post not found"}
 
     save, created = Save.objects.get_or_create(user=user, post=post)
     if not created:
-        # Already saved → unsave (toggle)
         save.delete()
         return {"saved": False}
     return {"saved": True}
@@ -197,8 +202,8 @@ def save_post(request, post_id: int):
 @content_router.post(
     "/interactions/comment/", response=CommentSchema, auth=auth
 )
-def comment_post(request, payload: CommentCreateSchema):
-    user = request.user
+def comment_post(request: HttpRequest, payload: CommentCreateSchema):
+    user = cast(User, request.user)
     post = Post.objects.filter(id=payload.post_id).first()
     if not post:
         return {"error": "Post not found"}
@@ -207,7 +212,7 @@ def comment_post(request, payload: CommentCreateSchema):
     return CommentSchema(
         id=comment.id,
         user_id=user.id,
-        username=user.username,
+        username=(user.username or ""),
         text=comment.text,
         created_at=comment.created_at,
     )
@@ -216,26 +221,24 @@ def comment_post(request, payload: CommentCreateSchema):
 @content_router.post(
     "/interactions/share/", response=ShareResponseSchema, auth=auth
 )
-def share_post(request, payload: ShareCreateSchema):
-    user = request.user
+def share_post(request: HttpRequest, payload: ShareCreateSchema):
+    user = cast(User, request.user)
     post = Post.objects.filter(id=payload.post_id).first()
     if not post:
         return {"error": "Post not found"}
 
     share = Share(user=user, post=post)
-    share.save()  # slug auto-generated
+    share.save()
     return ShareResponseSchema(slug=share.slug)
 
 
 @content_router.get("/share/{slug}/")
-def track_share_click(request, slug: str):
+def track_share_click(request: HttpRequest, slug: str):
     share = (
         Share.objects.filter(slug=slug).select_related("post", "user").first()
     )
     if not share:
         return {"error": "Invalid share link"}
-
-    # Optionally, increment a click counter here or log click event
 
     return {
         "post_id": share.post.id,
@@ -246,8 +249,8 @@ def track_share_click(request, slug: str):
 
 
 @content_router.post("/posts/", auth=auth)
-def create_post(request, post: Form[PostCreateSchema]):
-    user = request.auth
+def create_post(request: HttpRequest, post: Form[PostCreateSchema]):
+    user = cast(User, request.user)
 
     if not post.media_url and not post.media_file:
         raise ValidationError(
@@ -263,10 +266,8 @@ def create_post(request, post: Form[PostCreateSchema]):
 
         if post.media_file:
             post_obj.media_file = post.media_file
-            post_obj.media_url = None
-        else:
+        elif post.media_url:
             post_obj.media_url = post.media_url
-            post_obj.media_file = None
 
         post_obj.save()
         post_obj.themes.set(post.themes)

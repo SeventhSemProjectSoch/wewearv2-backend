@@ -1,3 +1,6 @@
+from typing import cast
+
+from django.http import HttpRequest
 from ninja import Router
 from ninja.errors import ValidationError
 
@@ -59,8 +62,8 @@ def verify_otp(payload: VerifyOTPSchema):
 
 
 @profile_router.get("/profile", response=ProfileSchema, auth=auth)
-def get_profile(request):
-    user: User = request.auth
+def get_profile(request: HttpRequest):
+    user: User = cast(User, request.user)
     return ProfileSchema(
         username=user.username,
         full_name=user.full_name,
@@ -74,26 +77,23 @@ def get_profile(request):
 
 
 @profile_router.put("/profile", response=ProfileSchema, auth=auth)
-def update_profile(request, payload: UpdateProfileSchema):
-    user: User = request.auth
+def update_profile(request: HttpRequest, payload: UpdateProfileSchema):
+    user: User = cast(User, request.user)
 
     if len(payload.themes) < 3:
         raise ValidationError(
             [{"themes": "At least 3 clothing themes must be selected."}]
         )
 
-    # Validate that provided themes exist
     theme_objs = list(Theme.objects.filter(name__in=payload.themes))
     if len(theme_objs) != len(payload.themes):
         raise ValidationError([{"themes": "Invalid theme(s) specified."}])
 
-    user.username = payload.username
-    user.full_name = payload.full_name
-    user.bio = payload.bio
-    user.profile_picture = payload.profile_picture
-    user.body_type = payload.body_type
-    user.height = payload.height
-    user.weight = payload.weight
+    for attr, value in payload.dict(
+        exclude_unset=True,
+        exclude_defaults=True,
+    ).items():
+        setattr(user, attr, value)
     user.save()
     user.themes.set(theme_objs)
 
