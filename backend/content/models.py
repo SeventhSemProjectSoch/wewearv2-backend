@@ -40,7 +40,7 @@ class Post(BaseModel):
     )
 
     caption: models.TextField[str, str | None] = models.TextField(
-        blank=True, null=True
+        blank=True, null=True, db_index=True
     )
     themes: models.ManyToManyField[Theme, Theme] = models.ManyToManyField(
         Theme, related_name="posts"

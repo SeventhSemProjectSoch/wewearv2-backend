@@ -32,7 +32,7 @@ class UserManager(BaseUserManager["User"]):
 
 class Theme(models.Model):
     name: models.CharField[str, str] = models.CharField(
-        max_length=50, unique=True
+        max_length=50, unique=True, db_index=True
     )
 
     def __str__(self):
@@ -56,13 +56,13 @@ class User(AbstractBaseUser, PermissionsMixin):
         bool | Combinable, bool
     ] = models.BooleanField(default=False)
     username: models.CharField[str, str | None] = models.CharField(
-        max_length=30, unique=True, null=True, blank=True
+        max_length=30, unique=True, null=True, blank=True, db_index=True
     )
     full_name: models.CharField[str, str | None] = models.CharField(
-        max_length=100, null=True, blank=True
+        max_length=100, null=True, blank=True, db_index=True
     )
     bio: models.TextField[str, str | None] = models.TextField(
-        null=True, blank=True
+        null=True, blank=True, db_index=True
     )
     profile_picture: models.CharField[str, str | None] = models.URLField(
         null=True, blank=True
