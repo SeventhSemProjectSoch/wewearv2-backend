@@ -1,5 +1,5 @@
 [project]
-name = "https://github.com/SeventhSemProjectSoch/wewearv2-backend"
+name = "wewearv2-backend"
 version = "1.0.0"
 requires-python = ">=3.11"
 dependencies = [

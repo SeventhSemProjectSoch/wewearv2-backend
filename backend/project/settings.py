@@ -90,23 +90,33 @@ WSGI_APPLICATION = "project.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
-if ENV.POSTGRES_PASSWORD_FILE:
-    password = ENV.POSTGRES_PASSWORD_FILE.read_text().strip()
-else:
-    password = ENV.POSTGRES_PASSWORD
 
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": ENV.POSTGRES_DB,
-        "USER": ENV.POSTGRES_USER,
-        "PASSWORD": password,
-        "HOST": ENV.POSTGRES_HOST,
-        "PORT": ENV.POSTGRES_PORT,
+def select_datebase():
+    sqlite = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": f"{ENV.POSTGRES_DB}.db",
+        }
     }
-}
+    if ENV.POSTGRES_PASSWORD_FILE:
+        password = ENV.POSTGRES_PASSWORD_FILE.read_text().strip()
+    else:
+        password = ENV.POSTGRES_PASSWORD
+    postgress = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": ENV.POSTGRES_DB,
+            "USER": ENV.POSTGRES_USER,
+            "PASSWORD": password,
+            "HOST": ENV.POSTGRES_HOST,
+            "PORT": ENV.POSTGRES_PORT,
+        }
+    }
+    return sqlite if DEBUG else postgress
 
+
+DATABASES = select_datebase()
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
