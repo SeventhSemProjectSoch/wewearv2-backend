@@ -5,7 +5,9 @@ from ninja import Router
 
 from content.models import Post
 from content.models import Theme
+from content.schemas import PostSchema
 from users.models import User
+from users.schemas import ThemeModelSchema
 
 from .schemas import PostOut
 from .schemas import ThemeOut
@@ -34,10 +36,18 @@ def search_users(
         | Q(full_name__icontains=q)
         | Q(bio__icontains=q)
     ).order_by("username")[offset : offset + limit]
-    return qs
+    return [
+        UserOut(
+            id=str(user.id),
+            username=user.username,
+            full_name=user.full_name,
+            bio=user.bio,
+        )
+        for user in qs
+    ]
 
 
-@search_router.get("/posts/", response=list[PostOut])
+@search_router.get("/posts/", response=list[PostSchema])
 def search_posts(
     request: HttpRequest,
     q: str,
@@ -55,6 +65,7 @@ def search_posts(
         .distinct()
         .order_by("-created_at")[offset : offset + limit]
     )
+    # print([i.author for i in qs.all()])
     qs = qs.prefetch_related("themes", "author")
 
     results: list[PostOut] = []
@@ -62,7 +73,7 @@ def search_posts(
         results.append(
             PostOut(
                 id=post.id,
-                author_id=post.author.id,
+                author_id=str(post.author.id),
                 author_username=post.author.username,
                 caption=post.caption,
                 themes=[theme.name for theme in post.themes.all()],
@@ -71,7 +82,7 @@ def search_posts(
     return results
 
 
-@search_router.get("/themes/", response=list[ThemeOut])
+@search_router.get("/themes/", response=list[ThemeModelSchema])
 def search_themes(
     request: HttpRequest,
     q: str,
@@ -82,5 +93,4 @@ def search_themes(
     qs = Theme.objects.filter(name__icontains=q)
     if used_only:
         qs = qs.annotate(post_count=Count("posts")).filter(post_count__gt=0)
-    qs = qs.order_by("name")[offset : offset + limit]
-    return qs
+    return qs.order_by("name")[offset : offset + limit]

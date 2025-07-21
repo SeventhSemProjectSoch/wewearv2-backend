@@ -41,7 +41,7 @@ class Theme(models.Model):
 
 
 class User(AbstractBaseUser, PermissionsMixin):
-    id: models.UUIDField[str, str] = models.UUIDField(
+    id: models.UUIDField[uuid.UUID, uuid.UUID] = models.UUIDField(
         primary_key=True, default=uuid.uuid4, editable=False
     )
     email: models.CharField[str, str | None] = models.EmailField(
@@ -87,6 +87,16 @@ class User(AbstractBaseUser, PermissionsMixin):
     REQUIRED_FIELDS = []
 
     objects = UserManager()
+
+    # Dynamic patching of id UUID class instance to, string
+    # def __getattribute__(self, name: str):
+    #     if name == "__dict__":
+    #         dic = super().__getattribute__(name)
+    #         dic["id"] = str(dic["id"])
+    #         return dic
+    #     if name == "id":
+    #         return str(super().__getattribute__(name))
+    #     return super().__getattribute__(name)
 
     def __str__(self):
         return f"{self.email or self.phone}"

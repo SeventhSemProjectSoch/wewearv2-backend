@@ -1,3 +1,5 @@
+import traceback
+
 from django.conf import settings
 from django.conf.urls.static import static  # type:ignore
 from django.contrib import admin
@@ -31,6 +33,10 @@ def integrity_error_handler(request: HttpRequest, exc: IntegrityError):
 
 @api.exception_handler(ObjectDoesNotExist)
 def does_not_exist_handler(request: HttpRequest, exc: ObjectDoesNotExist):
+    tb_str = "".join(
+        traceback.format_exception(type(exc), exc, exc.__traceback__)
+    )
+    print(tb_str)
     return api.create_response(request, {"detail": str(exc)}, status=400)
 
 
