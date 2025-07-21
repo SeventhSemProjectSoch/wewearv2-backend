@@ -13,14 +13,14 @@ class ProfileSchema(Schema):
 
 
 class UpdateProfileSchema(Schema):
-    username: str
+    username: str | None = None
     full_name: str | None = None
     bio: str | None = None
     profile_picture: str | None = None
     body_type: str | None = None
     height: float | None = None
     weight: float | None = None
-    themes: list[str]
+    themes: list[str] = []
 
 
 class RequestOTPSchema(Schema):

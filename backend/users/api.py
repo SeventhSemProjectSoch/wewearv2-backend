@@ -95,25 +95,21 @@ def get_profile(request: HttpRequest):
 
 @profile_router.put("/profile", response=ProfileSchema, auth=auth)
 def update_profile(request: HttpRequest, payload: UpdateProfileSchema):
-    user: User = cast(User, request.user)
-
-    if len(payload.themes) < 3:
-        raise ValidationError(
-            [{"themes": "At least 3 clothing themes must be selected."}]
-        )
-
-    theme_objs = list(Theme.objects.filter(name__in=payload.themes))
-    if len(theme_objs) != len(payload.themes):
-        raise ValidationError([{"themes": "Invalid theme(s) specified."}])
-
-    for attr, value in payload.dict(
+    _payload = payload.dict(
         exclude_unset=True,
         exclude_defaults=True,
-    ).items():
-        if attr == "themes":
-            continue
+    )
+
+    user: User = cast(User, request.user)
+
+    theme_objs: list[Theme] = []
+    if "themes" in _payload:
+        for theme_name in payload.themes:
+            theme_objs.append(Theme.objects.get_or_create(name=theme_name)[0])
+        user.themes.set(theme_objs)
+        _payload.pop("themes")
+
+    for attr, value in _payload.items():
         setattr(user, attr, value)
     user.save()
-    user.themes.set(theme_objs)
-
     return get_profile(request)
