@@ -1,16 +1,14 @@
-from datetime import datetime
-
+from ninja import ModelSchema
 from pydantic import BaseModel
 
-
-class NotificationOut(BaseModel):
-    id: int
-    type: str
-    actor_username: str
-    post_id: int | None = None
-    created_at: datetime
-    read: bool
+from notifications.models import Notification
 
 
 class NotificationMarkIn(BaseModel):
     read: bool
+
+
+class NotificationModelSchema(ModelSchema):
+    class Meta:
+        model = Notification
+        fields = "__all__"

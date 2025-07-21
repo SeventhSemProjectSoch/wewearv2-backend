@@ -6,12 +6,14 @@ from ninja.pagination import paginate  # type:ignore
 
 from .models import Notification
 from .schemas import NotificationMarkIn
-from .schemas import NotificationOut
+from .schemas import NotificationModelSchema
 
 notifications_router = Router(tags=["Notifications"])
 
 
-@notifications_router.get("/notifications/", response=list[NotificationOut])
+@notifications_router.get(
+    "/notifications/", response=list[NotificationModelSchema]
+)
 @paginate(LimitOffsetPagination)  # type:ignore
 def list_notifications(
     request: HttpRequest,
@@ -24,7 +26,7 @@ def list_notifications(
 
 
 @notifications_router.post(
-    "/notifications/{notification_id}/mark/", response=NotificationOut
+    "/notifications/{notification_id}/mark/", response=NotificationModelSchema
 )
 def mark_notification(
     request: HttpRequest, notification_id: int, payload: NotificationMarkIn
