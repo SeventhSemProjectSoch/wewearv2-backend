@@ -25,12 +25,10 @@ def create_access_token(*, sub: str) -> str:
 
 class JWTAuth(HttpBearer):
     def authenticate(self, request: HttpRequest, token: str):
-        try:
-            payload = jwt.decode(  # type:ignore
-                token, SECRET_KEY, algorithms=[ENV.ALGORITHM]
-            )
-            user_id = payload.get("sub")
-            user = User.objects.get(id=user_id)
-            return user
-        except Exception:
-            return None
+        payload = jwt.decode(  # type:ignore
+            token, SECRET_KEY, algorithms=[ENV.ALGORITHM]
+        )
+        user_id = payload.get("sub")
+        user = User.objects.get(id=user_id)
+        request.user = user
+        return user

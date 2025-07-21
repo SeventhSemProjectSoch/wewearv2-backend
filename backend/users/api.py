@@ -1,9 +1,11 @@
 from typing import cast
 
-from django.http import HttpRequest
+# from django.http import HttpRequest
+from django.http.request import HttpRequest
 from ninja import Router
 from ninja.errors import ValidationError
 
+from project.schemas import GenericResponse
 from users.auth import JWTAuth
 from users.auth import create_access_token
 from users.models import OTP
@@ -24,33 +26,48 @@ def send_otp(identifier: str, code: str):
     print(f"Sending OTP {code} to {identifier}")
 
 
-@users_router.post("/request-otp")
-def request_otp(payload: RequestOTPSchema):
+@users_router.post(
+    "/request-otp",
+    response={
+        200: GenericResponse,
+        404: GenericResponse,
+    },
+)
+def request_otp(request: HttpRequest, payload: RequestOTPSchema):
     identifier = payload.email or payload.phone
     if not identifier:
-        return {"error": "Email or phone is required"}
+        return 404, GenericResponse(error="Email or phone is required")
 
     code = OTP.generate_code()
     OTP.objects.create(identifier=identifier, code=code)
     send_otp(identifier, code)
-    return {"message": "OTP sent"}
+    return 200, GenericResponse(detail=f"OTP was sent to  '{identifier}'.")
 
 
-@users_router.post("/verify-otp", response=TokenSchema)
-def verify_otp(payload: VerifyOTPSchema):
+@users_router.post(
+    "/verify-otp",
+    response={
+        200: TokenSchema,
+        404: GenericResponse,
+        409: GenericResponse,
+    },
+)
+def verify_otp(request: HttpRequest, payload: VerifyOTPSchema):
     identifier = payload.email or payload.phone
     if not identifier:
-        return {"error": "Email or phone is required"}
+        return 404, GenericResponse(**{"error": "Email or phone is required"})
 
     try:
         otp = OTP.objects.filter(
             identifier=identifier, code=payload.code
         ).latest("created_at")
     except OTP.DoesNotExist:
-        return {"error": "Invalid OTP"}
+        return 409, GenericResponse(
+            **{"error": f"invalid OTP for '{identifier}'."}
+        )
 
     if otp.is_expired():
-        return {"error": "OTP expired"}
+        return 410, GenericResponse(**{"error": "OTP expired"})
 
     user, _ = User.objects.get_or_create(
         email=payload.email if payload.email else None,
@@ -58,7 +75,7 @@ def verify_otp(payload: VerifyOTPSchema):
     )
 
     token = create_access_token(sub=str(user.id))
-    return {"access_token": token}
+    return 200, TokenSchema(**{"access_token": token})
 
 
 @profile_router.get("/profile", response=ProfileSchema, auth=auth)

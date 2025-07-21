@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime
 from datetime import timedelta
+from datetime import timezone
 from secrets import token_urlsafe
 
 from django.contrib.auth.models import AbstractBaseUser
@@ -99,7 +100,9 @@ class OTP(models.Model):
     ] = models.DateTimeField(auto_now_add=True)
 
     def is_expired(self):
-        return datetime.now() > self.created_at + timedelta(minutes=5)
+        return datetime.now(timezone.utc) > self.created_at + timedelta(
+            minutes=5
+        )
 
     @staticmethod
     def generate_code():
