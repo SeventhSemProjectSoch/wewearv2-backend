@@ -223,7 +223,7 @@ def comment_post(request: HttpRequest, payload: CommentCreateSchema):
     comment = Comment.objects.create(user=user, post=post, text=payload.text)
     return CommentSchema(
         id=comment.id,
-        user_id=user.id,
+        user_id=str(user.id),
         username=(user.username or ""),
         text=comment.text,
         created_at=comment.created_at,

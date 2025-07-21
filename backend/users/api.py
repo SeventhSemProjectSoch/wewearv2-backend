@@ -1,9 +1,7 @@
 from typing import cast
 
-# from django.http import HttpRequest
-from django.http.request import HttpRequest
+from django.http import HttpRequest
 from ninja import Router
-from ninja.errors import ValidationError
 
 from project.schemas import GenericResponse
 from users.auth import JWTAuth

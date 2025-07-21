@@ -10,7 +10,6 @@ from users.models import User
 from users.schemas import ThemeModelSchema
 
 from .schemas import PostOut
-from .schemas import ThemeOut
 from .schemas import UserOut
 
 search_router = Router(tags=["Search"])
