@@ -1,4 +1,13 @@
+from ninja import ModelSchema
 from ninja import Schema
+
+from users.models import Theme
+
+
+class ThemeModelSchema(ModelSchema):
+    class Meta:
+        model = Theme
+        exclude = ["id"]
 
 
 class ProfileSchema(Schema):

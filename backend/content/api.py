@@ -6,7 +6,6 @@ from django.db.models import Exists
 from django.db.models import OuterRef
 from django.db.models import QuerySet
 from django.http import HttpRequest
-from ninja import Form
 from ninja import Router
 from ninja.errors import ValidationError
 
@@ -24,7 +23,9 @@ from content.schemas import PostCreateSchema
 from content.schemas import PostSchema
 from content.schemas import ShareCreateSchema
 from content.schemas import ShareResponseSchema
+from project.schemas import GenericResponse
 from users.auth import JWTAuth
+from users.models import Theme
 from users.models import User
 
 auth = JWTAuth()
@@ -46,11 +47,11 @@ def _get_post_with_interactions(user: User, post_qs: QuerySet[Post, Post]):
 def _serialize_post(user: User, post: Post) -> PostSchema:
     return PostSchema(
         id=post.id,
-        author_id=post.author.id,
+        author_id=str(post.author.id),
         author_username=post.author.username,
         media_url=post.media(),
         caption=post.caption,
-        themes=[t.name for t in post.themes.all()],
+        themes=[theme.name for theme in post.themes.all()],
         created_at=post.created_at,
         likes_count=getattr(post, "likes_count", 0),
         comments_count=getattr(post, "comments_count", 0),
@@ -61,13 +62,16 @@ def _serialize_post(user: User, post: Post) -> PostSchema:
     )
 
 
-@content_router.get("/feeds/foryou/", response=PostSchema | None, auth=auth)
-def feed_for_you(request: HttpRequest, exclude_ids: list[str] = []):
+@content_router.get(
+    "/feeds/foryou/", response=PostSchema | GenericResponse, auth=auth
+)
+def feed_for_you(request: HttpRequest):
     user = cast(User, request.user)
 
     base_qs = Post.objects.exclude(author=user)
-    if exclude_ids:
-        base_qs = base_qs.exclude(id__in=exclude_ids)
+
+    # FIXME: add user blocking, so blocked user content dosenot appear here
+    # base_qs = base_qs.exclude(id__in=exclude_ids)
 
     theme_ids = list(user.themes.values_list("id", flat=True))
     similar_body_type = user.body_type
@@ -94,6 +98,10 @@ def feed_for_you(request: HttpRequest, exclude_ids: list[str] = []):
         base_qs = base_qs.filter(
             themes__id__in=theme_ids,
         )
+
+    base_qs = base_qs.exclude(
+        Exists(Impression.objects.filter(user=user, post=OuterRef("pk")))
+    )
     filtered_qs = base_qs.distinct()
 
     qs = _get_post_with_interactions(user, filtered_qs)
@@ -103,29 +111,33 @@ def feed_for_you(request: HttpRequest, exclude_ids: list[str] = []):
     if post:
         Impression.objects.create(user=user, post=post)
         return _serialize_post(user, post)
-    return None
+    return GenericResponse(detail="You have reached the end of content.")
 
 
-@content_router.get("/feeds/friends/", response=PostSchema | None, auth=auth)
-def feed_friends(request: HttpRequest, exclude_ids: list[int] = []):
+@content_router.get(
+    "/feeds/friends/", response=PostSchema | GenericResponse, auth=auth
+)
+def feed_friends(request: HttpRequest):
     user = cast(User, request.user)
     following_ids = Follow.objects.filter(follower=user).values_list(
         "following_id", flat=True
     )
     qs = Post.objects.filter(author_id__in=following_ids)
-    if exclude_ids:
-        qs = qs.exclude(id__in=exclude_ids)
-
+    qs = qs.exclude(
+        Exists(Impression.objects.filter(user=user, post=OuterRef("pk")))
+    )
     qs = _get_post_with_interactions(user, qs)
     post = qs.order_by("?").first()
     if post:
         Impression.objects.create(user=user, post=post)
         return _serialize_post(user, post)
-    return None
+    return GenericResponse(detail="You have reached the end of content.")
 
 
-@content_router.get("/feeds/explore/", response=PostSchema | None, auth=auth)
-def feed_explore(request: HttpRequest, exclude_ids: list[int] = []):
+@content_router.get(
+    "/feeds/explore/", response=PostSchema | GenericResponse, auth=auth
+)
+def feed_explore(request: HttpRequest):
     user = cast(User, request.user)
     following_ids = set(
         Follow.objects.filter(follower=user).values_list(
@@ -135,9 +147,9 @@ def feed_explore(request: HttpRequest, exclude_ids: list[int] = []):
     user_theme_ids = set(user.themes.values_list("id", flat=True))
 
     base_qs = Post.objects.exclude(author=user)
-    if exclude_ids:
-        base_qs = base_qs.exclude(id__in=exclude_ids)
-
+    base_qs = base_qs.exclude(
+        Exists(Impression.objects.filter(user=user, post=OuterRef("pk")))
+    )
     filtered_qs = (
         base_qs.exclude(author_id__in=following_ids)
         .exclude(themes__id__in=user_theme_ids)
@@ -149,7 +161,7 @@ def feed_explore(request: HttpRequest, exclude_ids: list[int] = []):
     if post:
         Impression.objects.create(user=user, post=post)
         return _serialize_post(user, post)
-    return None
+    return GenericResponse(detail="You have reached the end of content.")
 
 
 @content_router.get("/feeds/upload/", response=PaginatedPostsSchema, auth=auth)
@@ -249,7 +261,7 @@ def track_share_click(request: HttpRequest, slug: str):
 
 
 @content_router.post("/posts/", auth=auth)
-def create_post(request: HttpRequest, post: Form[PostCreateSchema]):
+def create_post(request: HttpRequest, post: PostCreateSchema):
     user = cast(User, request.user)
 
     if not post.media_url and not post.media_file:
@@ -270,7 +282,13 @@ def create_post(request: HttpRequest, post: Form[PostCreateSchema]):
             post_obj.media_url = post.media_url
 
         post_obj.save()
-        post_obj.themes.set(post.themes)
+
+        post_obj.themes.set(
+            [
+                Theme.objects.get_or_create(name=theme_name)[0]
+                for theme_name in post.themes
+            ]
+        )
 
     return {
         "id": post_obj.id,
