@@ -110,6 +110,8 @@ def update_profile(request: HttpRequest, payload: UpdateProfileSchema):
         exclude_unset=True,
         exclude_defaults=True,
     ).items():
+        if attr == "themes":
+            continue
         setattr(user, attr, value)
     user.save()
     user.themes.set(theme_objs)
