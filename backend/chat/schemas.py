@@ -2,16 +2,16 @@ from datetime import datetime
 from typing import Annotated
 
 from annotated_types import MaxLen
+from ninja import ModelSchema
 from pydantic import BaseModel
 
+from chat.models import Message
 
-class MessageOut(BaseModel):
-    id: int
-    sender_id: str
-    receiver_id: str
-    content: str
-    created_at: datetime
-    read: bool
+
+class MessageModelSchema(ModelSchema):
+    class Meta:
+        model = Message
+        fields = "__all__"
 
 
 class MessageIn(BaseModel):
@@ -24,3 +24,4 @@ class ConversationOut(BaseModel):
     username: str
     last_message: str
     last_timestamp: datetime
+    profile_url: str | None
