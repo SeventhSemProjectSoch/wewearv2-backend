@@ -59,13 +59,10 @@ def hijak_media_type_guessing():
     old_guesser = mimetypes.guess_type
 
     def new_guesser(url: str, strict: bool = True):
-        ext = ".txt"
         try:
-            ext = puremagic.from_file(url)
+            url += puremagic.from_file(url)
         except puremagic.main.PureError:
             pass
-        finally:
-            url = url + ext
         return old_guesser(url, strict)
 
     mimetypes.guess_type = new_guesser
