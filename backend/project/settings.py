@@ -41,6 +41,8 @@ if not ENV.DEBUG:
     SECURE_HSTS_PRELOAD = True
 
 ALLOWED_HOSTS = ENV.ALLOWED_HOSTS.split(",")
+# CORS_ALLOWED_ORIGINS = ALLOWED_HOSTS
+CORS_ALLOW_ALL_ORIGINS = True
 CSRF_TRUSTED_ORIGINS = ENV.CSRF_TRUSTED_ORIGINS.split(",")
 
 # Application definition
@@ -60,10 +62,12 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # external module
     "channels",  # for websocket chattings
+    "corsheaders",
 ]
 SGI_APPLICATION = "project.asgi.application"
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",

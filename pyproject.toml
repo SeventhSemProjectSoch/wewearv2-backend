@@ -3,18 +3,19 @@ name = "wewearv2-backend"
 version = "1.0.0"
 requires-python = ">=3.11"
 dependencies = [
+    "channels",
     "Django",
-    "django-types",
+    "django-cors-headers",
+    "django-ninja",
     "django-stubs",
     "django-stubs-ext",
+    "django-types",
     "gunicorn",
     "psycopg2-binary",
     "pydantic",
     "pydantic-settings",
-    "whitenoise",
-    "django-ninja",
     "PyJWT",
-    "channels"
+    "whitenoise",
 ]
 
 [project.optional-dependencies]

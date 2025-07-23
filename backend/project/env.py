@@ -14,7 +14,7 @@ class Environment(BaseSettings):
     POSTGRES_PASSWORD: str = "postgres"
     POSTGRES_PASSWORD_FILE: Path | None = None
     POSTGRES_PORT: int = 5432
-    ALLOWED_HOSTS: str = "*"
+    ALLOWED_HOSTS: str = "*,*"
     CSRF_TRUSTED_ORIGINS: str = "http://127.0.0.1:8000"
     SECRET_KEY: str = token_urlsafe(127) if not DEBUG else "A_SECRET_KEY"
     SECRET_KEY_FILE: Path | None = None
