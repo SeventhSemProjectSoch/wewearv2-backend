@@ -1,5 +1,7 @@
+import mimetypes
 import traceback
 
+import puremagic
 from django.conf import settings
 from django.conf.urls.static import static  # type:ignore
 from django.contrib import admin
@@ -44,6 +46,32 @@ def does_not_exist_handler(request: HttpRequest, exc: ObjectDoesNotExist):
 def not_a_valid_user(request: HttpRequest, exc: ObjectDoesNotExist):
     return api.create_response(request, {"detail": str(exc)}, status=400)
 
+
+HIJACKED = False
+
+
+def hijak_media_type_guessing():
+    global HIJACKED
+    if HIJACKED:
+        return
+
+    HIJACKED = True
+    old_guesser = mimetypes.guess_type
+
+    def new_guesser(url: str, strict: bool = True):
+        ext = ".txt"
+        try:
+            ext = puremagic.from_file(url)
+        except puremagic.main.PureError:
+            pass
+        finally:
+            url = url + ext
+        return old_guesser(url, strict)
+
+    mimetypes.guess_type = new_guesser
+
+
+hijak_media_type_guessing()
 
 urlpatterns = [
     path("admin/", admin.site.urls),

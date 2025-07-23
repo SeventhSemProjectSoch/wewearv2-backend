@@ -12,6 +12,7 @@ dependencies = [
     "django-types",
     "gunicorn",
     "psycopg2-binary",
+    "puremagic",
     "pydantic",
     "pydantic-settings",
     "PyJWT",
