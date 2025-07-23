@@ -8,7 +8,7 @@ from core.models import BaseModel
 from users.models import Theme
 from users.models import User
 
-media_storage = FileSystemStorage(location="media/posts")
+media_storage = FileSystemStorage(location="media")
 
 
 class Post(BaseModel):

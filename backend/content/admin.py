@@ -78,6 +78,14 @@ class ShareInline(admin.TabularInline[Share, Model]):
     show_change_link = True
 
 
+@admin.register(Impression)
+class ImpressionAdmin(admin.ModelAdmin[Impression]):
+    list_display = (
+        "id",
+        "created_at",
+    )
+
+
 class ImpressionInline(admin.TabularInline[Impression, Model]):
     model = Impression
     extra = 0

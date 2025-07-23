@@ -99,9 +99,9 @@ def feed_for_you(request: HttpRequest):
             themes__id__in=theme_ids,
         )
 
-    base_qs = base_qs.exclude(
-        Exists(Impression.objects.filter(user=user, post=OuterRef("pk")))
-    )
+    # base_qs = base_qs.exclude(
+    #     Exists(Impression.objects.filter(user=user, post=OuterRef("pk")))
+    # )
     filtered_qs = base_qs.distinct()
 
     qs = _get_post_with_interactions(user, filtered_qs)
