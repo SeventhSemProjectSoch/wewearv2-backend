@@ -32,6 +32,14 @@ SECRET_KEY = secret_key
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = ENV.DEBUG
 
+
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_USE_TLS = True
+EMAIL_PORT = 587
+EMAIL_HOST_USER = ENV.SMTP_EMAIL
+EMAIL_HOST_PASSWORD = ENV.SMTP_PASSWORD
+
 # Production configuration
 if not ENV.DEBUG:
     SESSION_COOKIE_SECURE = True

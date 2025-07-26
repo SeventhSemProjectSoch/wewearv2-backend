@@ -1,5 +1,6 @@
 from typing import cast
 
+from django.core.mail import send_mail
 from django.http import HttpRequest
 from ninja import Router
 
@@ -21,6 +22,27 @@ profile_router = Router(tags=["Profile"])
 
 
 def send_otp(identifier: str, code: str):
+    send_mail(
+        "Your One-Time Password (OTP)",
+        f"""
+Hello,
+
+Your One-Time Password (OTP) for verification is:
+
+{code}
+
+Please use this OTP to complete your action. This OTP is valid for a short period.
+Do not share this OTP with anyone.
+
+If you did not request this OTP, please ignore this email.
+
+Thank you,
+[Your Application/Service Name]
+    """,
+        "kdhakl1510@gmail.com",
+        [identifier],
+        fail_silently=False,
+    )
     print(f"Sending OTP {code} to {identifier}")
 
 

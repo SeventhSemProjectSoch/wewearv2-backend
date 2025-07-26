@@ -23,6 +23,8 @@ class Environment(BaseSettings):
     # auth token
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_DAYS: int = 30
+    SMTP_PASSWORD: str | None = None
+    SMTP_EMAIL: str | None = None
 
 
 ENV = Environment()
