@@ -1,16 +1,13 @@
 from datetime import datetime
 
-from ninja import File
 from ninja import Form
 from ninja import Schema
-from ninja.files import UploadedFile
 
 
 class PostCreateSchema(Schema):
     caption: str | None = None
     themes: list[str]
     media_url: Form[str] | None = None
-    media_file: File[UploadedFile] | None = None
 
 
 class PostSchema(Schema):

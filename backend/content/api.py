@@ -6,7 +6,10 @@ from django.db.models import Exists
 from django.db.models import OuterRef
 from django.db.models import QuerySet
 from django.http import HttpRequest
+from ninja import File
+from ninja import Form
 from ninja import Router
+from ninja import UploadedFile
 from ninja.errors import ValidationError
 
 from content.models import Comment
@@ -95,10 +98,11 @@ def feed_for_you(request: HttpRequest):
         base_qs = base_qs.filter(
             author__body_type=similar_body_type,
         )
-    if theme_ids:
-        base_qs = base_qs.filter(
-            themes__id__in=theme_ids,
-        )
+    print(f"{base_qs}\n" * 10)
+    # if theme_ids:
+    #     base_qs = base_qs.filter(
+    #         themes__id__in=theme_ids,
+    #     )
 
     # base_qs = base_qs.exclude(
     #     Exists(Impression.objects.filter(user=user, post=OuterRef("pk")))
@@ -299,10 +303,14 @@ def track_share_click(request: HttpRequest, slug: str):
 
 
 @content_router.post("/posts/", auth=auth)
-def create_post(request: HttpRequest, post: PostCreateSchema):
+def create_post(
+    request: HttpRequest,
+    post: PostCreateSchema,
+    media_file: File[UploadedFile] = None,
+):
     user = cast(User, request.user)
 
-    if not post.media_url and not post.media_file:
+    if not post.media_url and not media_file:
         raise ValidationError(
             [
                 {
@@ -314,8 +322,8 @@ def create_post(request: HttpRequest, post: PostCreateSchema):
     with transaction.atomic():
         post_obj = Post(author=user, caption=post.caption)
 
-        if post.media_file:
-            post_obj.media_file = post.media_file
+        if media_file:
+            post_obj.media_file = media_file
         elif post.media_url:
             post_obj.media_url = post.media_url
 

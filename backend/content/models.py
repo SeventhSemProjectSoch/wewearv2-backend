@@ -34,6 +34,7 @@ class Post(BaseModel):
     )
 
     def media(self) -> str:
+        print(self.media_file)
         if self.media_file:
             return self.media_file.url
         return self.media_url or ""
