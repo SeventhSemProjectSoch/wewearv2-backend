@@ -57,3 +57,10 @@ class PaginatedPostsSchema(Schema):
     total: int
     offset: int
     limit: int
+
+
+class PaginatedCommentsSchema(Schema):
+    comments: list[CommentSchema]
+    total: int
+    offset: int
+    limit: int

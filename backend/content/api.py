@@ -18,6 +18,7 @@ from content.models import Save
 from content.models import Share
 from content.schemas import CommentCreateSchema
 from content.schemas import CommentSchema
+from content.schemas import PaginatedCommentsSchema
 from content.schemas import PaginatedPostsSchema
 from content.schemas import PostCreateSchema
 from content.schemas import PostSchema
@@ -209,6 +210,43 @@ def save_post(request: HttpRequest, post_id: int):
         save.delete()
         return {"saved": False}
     return {"saved": True}
+
+
+@content_router.get(
+    "/interactions/comments/", response=PaginatedCommentsSchema, auth=auth
+)
+def fetch_comments(
+    request: HttpRequest,
+    post_id: int,
+    offset: int = 0,
+    limit: int = 20,
+):
+    # user = cast(User, request.user)
+    post = Post.objects.filter(id=post_id).first()
+    if not post:
+        return {"comments": [], "total": 0, "offset": offset, "limit": limit}
+
+    comments_qs = Comment.objects.filter(post=post).order_by("-created_at")
+    total = comments_qs.count()
+    comments = comments_qs[offset : offset + limit]
+
+    serialized = [
+        CommentSchema(
+            id=c.id,
+            user_id=str(c.user.id),
+            username=c.user.username or "",
+            text=c.text,
+            created_at=c.created_at,
+        )
+        for c in comments.select_related("user")
+    ]
+
+    return PaginatedCommentsSchema(
+        comments=serialized,
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 @content_router.post(
