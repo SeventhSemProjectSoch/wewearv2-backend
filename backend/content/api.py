@@ -98,11 +98,10 @@ def feed_for_you(request: HttpRequest):
         base_qs = base_qs.filter(
             author__body_type=similar_body_type,
         )
-    print(f"{base_qs}\n" * 10)
-    # if theme_ids:
-    #     base_qs = base_qs.filter(
-    #         themes__id__in=theme_ids,
-    #     )
+    if theme_ids:
+        base_qs = base_qs.filter(
+            themes__id__in=theme_ids,
+        )
 
     # base_qs = base_qs.exclude(
     #     Exists(Impression.objects.filter(user=user, post=OuterRef("pk")))
@@ -128,9 +127,9 @@ def feed_friends(request: HttpRequest):
         "following_id", flat=True
     )
     qs = Post.objects.filter(author_id__in=following_ids)
-    qs = qs.exclude(
-        Exists(Impression.objects.filter(user=user, post=OuterRef("pk")))
-    )
+    # qs = qs.exclude(
+    #     Exists(Impression.objects.filter(user=user, post=OuterRef("pk")))
+    # )
     qs = _get_post_with_interactions(user, qs)
     post = qs.order_by("?").first()
     if post:
@@ -152,9 +151,9 @@ def feed_explore(request: HttpRequest):
     user_theme_ids = set(user.themes.values_list("id", flat=True))
 
     base_qs = Post.objects.exclude(author=user)
-    base_qs = base_qs.exclude(
-        Exists(Impression.objects.filter(user=user, post=OuterRef("pk")))
-    )
+    # base_qs = base_qs.exclude(
+    #     Exists(Impression.objects.filter(user=user, post=OuterRef("pk")))
+    # )
     filtered_qs = (
         base_qs.exclude(author_id__in=following_ids)
         .exclude(themes__id__in=user_theme_ids)
