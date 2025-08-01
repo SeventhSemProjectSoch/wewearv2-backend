@@ -3,6 +3,7 @@ from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
 from secrets import token_urlsafe
+from typing import Literal
 
 from django.contrib.auth.models import AbstractBaseUser
 from django.contrib.auth.models import BaseUserManager
@@ -50,11 +51,21 @@ class BodyType(models.Model):
 
 
 class User(AbstractBaseUser, PermissionsMixin):
+    class Gender(models.TextChoices):
+        MALE = "M", "Male"
+        FEMALE = "F", "Female"
+        OTHER = "O", "Other"
+
     id: models.UUIDField[uuid.UUID, uuid.UUID] = models.UUIDField(
         primary_key=True, default=uuid.uuid4, editable=False
     )
     email: models.CharField[str, str | None] = models.EmailField(
         unique=True, null=True, blank=True
+    )
+    gender: models.CharField[str, Literal["M", "F", "O"]] = models.CharField(
+        max_length=1,
+        choices=Gender.choices,
+        default=Gender.OTHER,
     )
     phone: models.CharField[str, str | None] = models.CharField(
         max_length=20, unique=True, null=True, blank=True
