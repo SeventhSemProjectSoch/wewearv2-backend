@@ -40,6 +40,15 @@ class Theme(models.Model):
         return self.name
 
 
+class BodyType(models.Model):
+    name: models.CharField[str, str] = models.CharField(
+        max_length=20, unique=True, db_index=True
+    )
+
+    def __str__(self):
+        return self.name
+
+
 class User(AbstractBaseUser, PermissionsMixin):
     id: models.UUIDField[uuid.UUID, uuid.UUID] = models.UUIDField(
         primary_key=True, default=uuid.uuid4, editable=False
@@ -69,34 +78,24 @@ class User(AbstractBaseUser, PermissionsMixin):
         null=True, blank=True
     )
 
-    body_type: models.CharField[str, str | None] = models.CharField(
-        max_length=50, null=True, blank=True
-    )
     height: models.DecimalField[float, float | None] = models.DecimalField(
         max_digits=5, decimal_places=2, null=True, blank=True
     )
+
     weight: models.DecimalField[float, float | None] = models.DecimalField(
         max_digits=5, decimal_places=2, null=True, blank=True
     )
 
+    body_type: models.CharField[str, str | None] = models.CharField(
+        max_length=50, null=True, blank=True
+    )
     themes: models.ManyToManyField[Theme, Theme] = models.ManyToManyField(
         Theme, blank=True, related_name="users"
     )
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
-
     objects = UserManager()
-
-    # Dynamic patching of id UUID class instance to, string
-    # def __getattribute__(self, name: str):
-    #     if name == "__dict__":
-    #         dic = super().__getattribute__(name)
-    #         dic["id"] = str(dic["id"])
-    #         return dic
-    #     if name == "id":
-    #         return str(super().__getattribute__(name))
-    #     return super().__getattribute__(name)
 
     def __str__(self):
         return f"{self.email or self.phone}"

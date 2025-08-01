@@ -1,13 +1,16 @@
+from threading import Thread
 from typing import cast
 
 from django.core.mail import send_mail
 from django.http import HttpRequest
 from ninja import Router
 
+from project.env import ENV
 from project.schemas import GenericResponse
 from users.auth import JWTAuth
 from users.auth import create_access_token
 from users.models import OTP
+from users.models import BodyType
 from users.models import Theme
 from users.models import User
 from users.schemas import ProfileSchema
@@ -39,7 +42,7 @@ If you did not request this OTP, please ignore this email.
 Thank you,
 [Your Application/Service Name]
     """,
-        "kdhakl1510@gmail.com",
+        ENV.SMTP_EMAIL,
         [identifier],
         fail_silently=False,
     )
@@ -60,6 +63,12 @@ def request_otp(request: HttpRequest, payload: RequestOTPSchema):
 
     code = OTP.generate_code()
     OTP.objects.create(identifier=identifier, code=code)
+    Thread(
+        target=send_otp,
+        args=(identifier, code),
+        daemon=False,
+        name="Otp thread",
+    ).start()
     send_otp(identifier, code)
     return 200, GenericResponse(detail=f"OTP was sent to  '{identifier}'.")
 
@@ -128,6 +137,9 @@ def update_profile(request: HttpRequest, payload: UpdateProfileSchema):
             theme_objs.append(Theme.objects.get_or_create(name=theme_name)[0])
         user.themes.set(theme_objs)
         _payload.pop("themes")
+
+    if "body_type" in _payload and payload.body_type:
+        BodyType.objects.get_or_create(name=payload.body_type)
 
     for attr, value in _payload.items():
         setattr(user, attr, value)

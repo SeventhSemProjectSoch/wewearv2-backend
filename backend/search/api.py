@@ -6,6 +6,7 @@ from ninja import Router
 from content.models import Post
 from content.models import Theme
 from content.schemas import PostSchema
+from users.models import BodyType
 from users.models import User
 from users.schemas import ThemeModelSchema
 
@@ -26,9 +27,9 @@ def extract_hashtags(caption: str | None) -> list[str]:
 @search_router.get("/users/", response=list[UserOut])
 def search_users(
     request: HttpRequest,
-    q: str,
-    limit: int = 20,
+    q: str = "",
     offset: int = 0,
+    limit: int = 20,
 ):
     qs = User.objects.filter(
         Q(username__icontains=q)
@@ -48,10 +49,7 @@ def search_users(
 
 @search_router.get("/posts/", response=list[PostSchema])
 def search_posts(
-    request: HttpRequest,
-    q: str,
-    limit: int = 20,
-    offset: int = 0,
+    request: HttpRequest, q: str = "", offset: int = 0, limit: int = 20
 ):
     theme_matches = Theme.objects.filter(name__icontains=q).values_list(
         "id", flat=True
@@ -64,7 +62,6 @@ def search_posts(
         .distinct()
         .order_by("-created_at")[offset : offset + limit]
     )
-    # print([i.author for i in qs.all()])
     qs = qs.prefetch_related("themes", "author")
 
     results: list[PostOut] = []
@@ -84,12 +81,24 @@ def search_posts(
 @search_router.get("/themes/", response=list[ThemeModelSchema])
 def search_themes(
     request: HttpRequest,
-    q: str,
-    used_only: bool = False,
-    limit: int = 20,
+    q: str = "",
     offset: int = 0,
+    limit: int = 20,
+    used_only: bool = False,
 ):
+    if not q:
+        return Theme.objects.all()
     qs = Theme.objects.filter(name__icontains=q)
     if used_only:
         qs = qs.annotate(post_count=Count("posts")).filter(post_count__gt=0)
+    return qs.order_by("name")[offset : offset + limit]
+
+
+@search_router.get("/body_type/", response=list[ThemeModelSchema])
+def search_themesa(
+    request: HttpRequest, q: str = "", offset: int = 0, limit: int = 20
+):
+    if not q:
+        return BodyType.objects.all()
+    qs = BodyType.objects.filter(name__icontains=q)
     return qs.order_by("name")[offset : offset + limit]
