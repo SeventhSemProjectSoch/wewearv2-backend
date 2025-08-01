@@ -11,6 +11,7 @@ dependencies = [
     "django-stubs-ext",
     "django-types",
     "gunicorn",
+    "pillow",
     "psycopg2-binary",
     "puremagic",
     "pydantic",
