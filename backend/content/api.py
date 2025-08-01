@@ -224,7 +224,6 @@ def fetch_comments(
     offset: int = 0,
     limit: int = 20,
 ):
-    # user = cast(User, request.user)
     post = Post.objects.filter(id=post_id).first()
     if not post:
         return {"comments": [], "total": 0, "offset": offset, "limit": limit}
@@ -305,7 +304,7 @@ def track_share_click(request: HttpRequest, slug: str):
 def create_post(
     request: HttpRequest,
     post: PostCreateSchema,
-    media_file: File[UploadedFile] = None,
+    media_file: File[UploadedFile] | None = None,
 ):
     user = cast(User, request.user)
 
