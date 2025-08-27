@@ -11,7 +11,7 @@ from .models import User
 
 
 @admin.register(User)
-class UserAdmin(admin.ModelAdmin):
+class UserAdmin(admin.ModelAdmin[User]):
     form = ComponentBaseForm
     form.components = [
         DataListFormComponent([(BodyType, "body_type")]),
@@ -76,5 +76,5 @@ class ThemeAdmin(admin.ModelAdmin[Theme]):
 
 
 @admin.register(BodyType)
-class BodyTypeAdmin(admin.ModelAdmin):
+class BodyTypeAdmin(admin.ModelAdmin[BodyType]):
     list_display = ("name",)

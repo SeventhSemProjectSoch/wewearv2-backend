@@ -70,8 +70,8 @@ def hijak_media_type_guessing():
 
     def new_guesser(url: str, strict: bool = True):
         try:
-            url += puremagic.from_file(url)
-        except puremagic.main.PureError:
+            url += puremagic.from_file(url)  # type:ignore
+        except puremagic.PureError:
             pass
         return old_guesser(url, strict)
 

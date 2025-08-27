@@ -133,9 +133,8 @@ def select_datebase():
             "PORT": ENV.POSTGRES_PORT,
         }
     }
-    # FIXME: use postgress in produciton
-    return sqlite
-    # return sqlite if DEBUG else postgress
+
+    return sqlite if DEBUG else postgress
 
 
 DATABASES = select_datebase()

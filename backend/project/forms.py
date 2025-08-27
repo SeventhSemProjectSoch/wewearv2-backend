@@ -1,6 +1,7 @@
 from abc import ABC
 from typing import Any
 from typing import Callable
+from typing import cast
 
 from django import forms
 from django.core.files.base import ContentFile
@@ -12,7 +13,7 @@ class SelfScript(MediaAsset):
     element_template = "<!-- {attributes} {path} -->"
     render_template = "<script {attributes}> {code} </script>"
 
-    def __init__(self, script: str, **attributes):
+    def __init__(self, script: str, **attributes: Any):
         self.attributes = attributes
         self.code = script
         super().__init__(script, **attributes)
@@ -23,7 +24,7 @@ class SelfScript(MediaAsset):
         )
 
 
-class ComponentBaseForm(forms.ModelForm):
+class ComponentBaseForm(forms.ModelForm[Any]):
     components: list["FormComponentInterface"] = []
     __pre_save_hooks: list[Callable[["ComponentBaseForm"], Any]] = []
     __post_save_hooks: list[Callable[["ComponentBaseForm"], Any]] = []
@@ -57,8 +58,8 @@ document.addEventListener("DOMContentLoaded", function() {
             )
         ]
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)  # type:ignore
         for component in self.components:
             component.apply(self)
 
@@ -79,7 +80,7 @@ document.addEventListener("DOMContentLoaded", function() {
         return super().full_clean()
 
     def save(self, commit: bool = True):
-        res = super().save(commit)
+        res = cast(bool, super().save(commit))
         for save_hook in self.__post_save_hooks:
             save_hook(self)
         return res
@@ -94,7 +95,7 @@ class DataListFormComponent(FormComponentInterface):
     def __init__(self, model_field_tuple: list[tuple[Any, str]] = []):
         self.model_field_tuple = model_field_tuple
 
-    def apply(self, on_class: forms.ModelForm):
+    def apply(self, on_class: forms.ModelForm[Any]):
         for model, field in self.model_field_tuple:
             existing_body_types = model.objects.values_list("name", flat=True)
             on_class.fields[field].widget = forms.TextInput()
@@ -124,7 +125,7 @@ class ImageUploadFormComponent(FormComponentInterface):
             )
 
             file_url = default_storage.url(path)
-            on_class.instance.__setattr__(field, file_url)
+            on_class.instance.__setattr__(field, file_url)  # type:ignore
             on_class.fields.pop(field)
 
     def save(self, on_class: ComponentBaseForm):

@@ -5,12 +5,13 @@ WeWear Interaction Testing Script
 Tests like, save, comment, and share functionality with real data.
 """
 
+import json
 import os
 import sys
 import time
+from typing import Any
+
 import requests
-import json
-from typing import Dict, Any, Optional, List
 
 # Add the parent directory to the path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -21,8 +22,12 @@ import django
 
 django.setup()
 
-from users.models import OTP, User
-from content.models import Post, Like, Save, Comment, Share
+from backend.content.models import Comment
+from backend.content.models import Like
+from backend.content.models import Post
+from backend.content.models import Save
+from backend.content.models import Share
+from backend.users.models import OTP
 
 
 class InteractionTester:
@@ -40,9 +45,9 @@ class InteractionTester:
         self,
         method: str,
         endpoint: str,
-        data: Optional[Dict] = None,
-        token: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        data: dict[Any, Any] = {},
+        token: str | None = None,
+    ) -> dict[Any, Any]:
         """Make HTTP request with error handling"""
         url = f"{self.base_url}{endpoint}"
         headers = {"Content-Type": "application/json"}
@@ -123,7 +128,7 @@ class InteractionTester:
             # Extract user ID from token payload
             import jwt
 
-            payload = jwt.decode(
+            payload = jwt.decode(  # type:ignore
                 self.token, options={"verify_signature": False}
             )
             self.user_id = payload.get("sub")
@@ -133,7 +138,7 @@ class InteractionTester:
             self.log(f"❌ OTP verification failed: {result}")
             return False
 
-    def get_available_posts(self) -> List[Dict]:
+    def get_available_posts(self) -> list[dict[Any, Any]]:
         """Get list of available posts"""
         posts = Post.objects.all()[:5]
         return [
@@ -259,10 +264,13 @@ class InteractionTester:
                 share_obj = Share.objects.filter(
                     user_id=self.user_id, post_id=post_id
                 ).first()
-                self.log(
-                    "✅ Share verified in database with slug:"
-                    f" {share_obj.slug}"
-                )
+                if not share_obj:
+                    assert "Unreachable"
+                else:
+                    self.log(
+                        "✅ Share verified in database with slug:"
+                        f" {share_obj.slug}"
+                    )
                 return True
             else:
                 self.log("❌ Share not found in database")
@@ -347,7 +355,7 @@ class InteractionTester:
             ("Counts", lambda: self.test_interaction_counts(post_id)),
         ]
 
-        results = []
+        results: list[tuple[str, bool]] = []
         for test_name, test_func in tests:
             try:
                 success = test_func()
