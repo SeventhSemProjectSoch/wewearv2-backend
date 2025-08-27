@@ -57,9 +57,9 @@ Thank you,
     },
 )
 def request_otp(request: HttpRequest, payload: RequestOTPSchema):
-    identifier = payload.email or payload.phone
+    identifier = payload.email
     if not identifier:
-        return 404, GenericResponse(error="Email or phone is required")
+        return 404, GenericResponse(error="Email  is required")
 
     code = OTP.generate_code()
     OTP.objects.create(identifier=identifier, code=code)
@@ -69,7 +69,6 @@ def request_otp(request: HttpRequest, payload: RequestOTPSchema):
         daemon=False,
         name="Otp thread",
     ).start()
-    send_otp(identifier, code)
     return 200, GenericResponse(detail=f"OTP was sent to  '{identifier}'.")
 
 
@@ -82,7 +81,7 @@ def request_otp(request: HttpRequest, payload: RequestOTPSchema):
     },
 )
 def verify_otp(request: HttpRequest, payload: VerifyOTPSchema):
-    identifier = payload.email or payload.phone
+    identifier = payload.email
     if not identifier:
         return 404, GenericResponse(**{"error": "Email or phone is required"})
 
@@ -100,7 +99,6 @@ def verify_otp(request: HttpRequest, payload: VerifyOTPSchema):
 
     user, _ = User.objects.get_or_create(
         email=payload.email if payload.email else None,
-        phone=payload.phone if payload.phone else None,
     )
 
     token = create_access_token(sub=str(user.id))

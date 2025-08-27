@@ -33,13 +33,11 @@ class UpdateProfileSchema(Schema):
 
 
 class RequestOTPSchema(Schema):
-    email: str | None = None
-    phone: str | None = None
+    email: str
 
 
 class VerifyOTPSchema(Schema):
     email: str | None = None
-    phone: str | None = None
     code: str
 
 

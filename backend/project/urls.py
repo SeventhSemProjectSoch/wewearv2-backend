@@ -9,6 +9,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db import IntegrityError
 from django.http import HttpRequest
 from django.urls import path
+from jwt.exceptions import ExpiredSignatureError
 from jwt.exceptions import InvalidSignatureError
 from ninja import NinjaAPI
 
@@ -43,19 +44,24 @@ def does_not_exist_handler(request: HttpRequest, exc: ObjectDoesNotExist):
 
 
 @api.exception_handler(InvalidSignatureError)
-def not_a_valid_user(request: HttpRequest, exc: ObjectDoesNotExist):
+def not_a_valid_user(request: HttpRequest, exc: InvalidSignatureError):
     return api.create_response(request, {"detail": str(exc)}, status=400)
 
 
-HIJACKED = False
+@api.exception_handler(ExpiredSignatureError)
+def jwt_expried(request: HttpRequest, exc: ExpiredSignatureError):
+    return api.create_response(request, {"detail": str(exc)}, status=401)
+
+
+__Hijacked = False
 
 
 def hijak_media_type_guessing():
-    global HIJACKED
-    if HIJACKED:
+    global __Hijacked
+    if __Hijacked:
         return
 
-    HIJACKED = True
+    __Hijacked = True
     old_guesser = mimetypes.guess_type
 
     def new_guesser(url: str, strict: bool = True):
