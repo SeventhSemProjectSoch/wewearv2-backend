@@ -1,3 +1,5 @@
+import uuid
+
 from ninja import ModelSchema
 from ninja import Schema
 
@@ -11,6 +13,7 @@ class ThemeModelSchema(ModelSchema):
 
 
 class ProfileSchema(Schema):
+    id: uuid.UUID
     username: str | None = None
     full_name: str | None = None
     bio: str | None = None
@@ -19,6 +22,9 @@ class ProfileSchema(Schema):
     height: float | None = None
     weight: float | None = None
     themes: list[str]
+    followers_count: int
+    following_count: int
+    posts_count: int
 
 
 class UpdateProfileSchema(Schema):

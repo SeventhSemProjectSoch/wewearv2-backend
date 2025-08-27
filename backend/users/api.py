@@ -5,6 +5,8 @@ from django.core.mail import send_mail
 from django.http import HttpRequest
 from ninja import Router
 
+from content.models import Follow
+from content.models import Post
 from project.env import ENV
 from project.schemas import GenericResponse
 from users.auth import JWTAuth
@@ -109,7 +111,13 @@ def verify_otp(request: HttpRequest, payload: VerifyOTPSchema):
 @profile_router.get("/profile", response=ProfileSchema, auth=auth)
 def get_profile(request: HttpRequest):
     user: User = cast(User, request.user)
+
+    followers_count = Follow.objects.filter(following=user).count()
+    following_count = Follow.objects.filter(follower=user).count()
+    posts_count = Post.objects.filter(author=user).count()
+
     return ProfileSchema(
+        id=user.id,
         username=user.username,
         full_name=user.full_name,
         bio=user.bio,
@@ -118,6 +126,9 @@ def get_profile(request: HttpRequest):
         height=user.height,
         weight=user.weight,
         themes=[t.name for t in user.themes.all()],
+        followers_count=followers_count,
+        following_count=following_count,
+        posts_count=posts_count,
     )
 
 
@@ -134,15 +145,15 @@ def update_profile(request: HttpRequest, payload: UpdateProfileSchema):
     if "themes" in _payload:
         for theme_name in payload.themes:
             theme_objs.append(Theme.objects.get_or_create(name=theme_name)[0])
-        user.themes.set(theme_objs)
-        _payload.pop("themes")
+            user.themes.set(theme_objs)
+            _payload.pop("themes")
 
     if "body_type" in _payload and payload.body_type:
         BodyType.objects.get_or_create(name=payload.body_type)
 
     for attr, value in _payload.items():
         setattr(user, attr, value)
-    user.save()
+        user.save()
     return get_profile(request)
 
 
@@ -154,7 +165,12 @@ def get_user_by_id(request: HttpRequest, user_id: int):
     if not user:
         return GenericResponse(detail="User not found")
 
+    followers_count = Follow.objects.filter(following=user).count()
+    following_count = Follow.objects.filter(follower=user).count()
+    posts_count = Post.objects.filter(author=user).count()
+
     return ProfileSchema(
+        id=user.id,
         username=user.username,
         full_name=user.full_name,
         bio=user.bio,
@@ -163,6 +179,9 @@ def get_user_by_id(request: HttpRequest, user_id: int):
         height=user.height,
         weight=user.weight,
         themes=[t.name for t in user.themes.all()],
+        followers_count=followers_count,
+        following_count=following_count,
+        posts_count=posts_count,
     )
 
 
