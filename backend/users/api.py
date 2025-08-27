@@ -143,3 +143,23 @@ def update_profile(request: HttpRequest, payload: UpdateProfileSchema):
         setattr(user, attr, value)
     user.save()
     return get_profile(request)
+
+
+@profile_router.get(
+    "/profile/{user_id}/", response=ProfileSchema | GenericResponse, auth=auth
+)
+def get_user_by_id(request: HttpRequest, user_id: int):
+    user = User.objects.filter(id=user_id).first()
+    if not user:
+        return GenericResponse(detail="User not found")
+
+    return ProfileSchema(
+        username=user.username,
+        full_name=user.full_name,
+        bio=user.bio,
+        profile_picture=user.profile_picture,
+        body_type=user.body_type,
+        height=user.height,
+        weight=user.weight,
+        themes=[t.name for t in user.themes.all()],
+    )
