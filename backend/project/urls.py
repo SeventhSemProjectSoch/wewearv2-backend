@@ -20,6 +20,7 @@ from search.api import search_router
 from users.api import meta_router
 from users.api import profile_router
 from users.api import users_router
+from users.follow_api import follow_router
 
 api = NinjaAPI()
 api.add_router("/auth", users_router)
@@ -29,6 +30,7 @@ api.add_router("/search", search_router)
 api.add_router("/notifications", notifications_router)
 api.add_router("/chat", chat_router)
 api.add_router("/meta", meta_router)
+api.add_router("/follow", follow_router)
 
 
 @api.exception_handler(IntegrityError)

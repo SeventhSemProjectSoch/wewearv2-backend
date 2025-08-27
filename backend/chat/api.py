@@ -40,9 +40,7 @@ def send_message(request: HttpRequest, payload: MessageIn):
     receiver = get_object_or_404(User, id=payload.receiver_id)
 
     if sender != receiver and not are_mutual_followers(sender, receiver):
-        return 403, GenericResponse(
-            **{"error": "Users are not mutual followers."}
-        )
+        return 403, GenericResponse(error="Users are not mutual followers.")
 
     return Message.objects.create(
         sender=sender,
