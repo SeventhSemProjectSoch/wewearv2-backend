@@ -22,6 +22,7 @@ from users.schemas import VerifyOTPSchema
 auth = JWTAuth()
 users_router = Router(tags=["Authentication"])
 profile_router = Router(tags=["Profile"])
+meta_router = Router(tags=["Meta"])
 
 
 def send_otp(identifier: str, code: str):
@@ -163,3 +164,15 @@ def get_user_by_id(request: HttpRequest, user_id: int):
         weight=user.weight,
         themes=[t.name for t in user.themes.all()],
     )
+
+
+@meta_router.get("/bodytypes/", response=list[str])
+def list_bodytypes(request: HttpRequest):
+    bodytypes = BodyType.objects.values_list("name", flat=True)
+    return list(bodytypes)
+
+
+@meta_router.get("/themes/", response=list[str])
+def list_themes(request: HttpRequest):
+    themes = Theme.objects.values_list("name", flat=True)
+    return list(themes)
