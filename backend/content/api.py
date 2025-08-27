@@ -7,7 +7,6 @@ from django.db.models import OuterRef
 from django.db.models import QuerySet
 from django.http import HttpRequest
 from ninja import File
-from ninja import Form
 from ninja import Router
 from ninja import UploadedFile
 from ninja.errors import ValidationError
@@ -226,7 +225,7 @@ def fetch_comments(
 ):
     post = Post.objects.filter(id=post_id).first()
     if not post:
-        return {"comments": [], "total": 0, "offset": offset, "limit": limit}
+        return PaginatedCommentsSchema(comments=[], total=0, offset=0, limit=0)
 
     comments_qs = Comment.objects.filter(post=post).order_by("-created_at")
     total = comments_qs.count()
@@ -339,3 +338,21 @@ def create_post(
         "media": post_obj.media(),
         "caption": post_obj.caption,
     }
+
+
+@content_router.get(
+    "/posts/{post_id}/", response=PostSchema | GenericResponse, auth=auth
+)
+def get_post_by_id(request: HttpRequest, post_id: int):
+    user = cast(User, request.user)
+    post_qs = Post.objects.filter(id=post_id)
+    if not post_qs.exists():
+        return GenericResponse(detail="Post not found")
+
+    qs = _get_post_with_interactions(user, post_qs)
+    post = qs.first()
+    if not post:
+        return GenericResponse(detail="Post not found")
+
+    Impression.objects.get_or_create(user=user, post=post)
+    return _serialize_post(user, post)
