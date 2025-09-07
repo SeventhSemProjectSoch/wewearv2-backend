@@ -5,21 +5,18 @@ from django.core.mail import send_mail
 from django.http import HttpRequest
 from ninja import Router
 
-from content.models import Follow
-from content.models import Post
+from content.models import Follow, Post
 from project.env import ENV
 from project.schemas import GenericResponse
-from users.auth import JWTAuth
-from users.auth import create_access_token
-from users.models import OTP
-from users.models import BodyType
-from users.models import Theme
-from users.models import User
-from users.schemas import ProfileSchema
-from users.schemas import RequestOTPSchema
-from users.schemas import TokenSchema
-from users.schemas import UpdateProfileSchema
-from users.schemas import VerifyOTPSchema
+from users.auth import JWTAuth, create_access_token
+from users.models import OTP, BodyType, Theme, User
+from users.schemas import (
+    ProfileSchema,
+    RequestOTPSchema,
+    TokenSchema,
+    UpdateProfileSchema,
+    VerifyOTPSchema,
+)
 
 auth = JWTAuth()
 users_router = Router(tags=["Authentication"])
@@ -89,13 +86,11 @@ def verify_otp(request: HttpRequest, payload: VerifyOTPSchema):
         return 404, GenericResponse(**{"error": "Email or phone is required"})
 
     try:
-        otp = OTP.objects.filter(
-            identifier=identifier, code=payload.code
-        ).latest("created_at")
-    except OTP.DoesNotExist:
-        return 409, GenericResponse(
-            **{"error": f"invalid OTP for '{identifier}'."}
+        otp = OTP.objects.filter(identifier=identifier, code=payload.code).latest(
+            "created_at"
         )
+    except OTP.DoesNotExist:
+        return 409, GenericResponse(**{"error": f"invalid OTP for '{identifier}'."})
 
     if otp.is_expired():
         return 410, GenericResponse(**{"error": "OTP expired"})
@@ -146,7 +141,7 @@ def update_profile(request: HttpRequest, payload: UpdateProfileSchema):
         for theme_name in payload.themes:
             theme_objs.append(Theme.objects.get_or_create(name=theme_name)[0])
             user.themes.set(theme_objs)
-            _payload.pop("themes")
+        _payload.pop("themes")
 
     if "body_type" in _payload and payload.body_type:
         BodyType.objects.get_or_create(name=payload.body_type)
