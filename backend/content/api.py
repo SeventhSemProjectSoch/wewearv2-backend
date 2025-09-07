@@ -276,21 +276,17 @@ def track_share_click(request: HttpRequest, slug: str):
 
 @content_router.post("/posts/", auth=auth)
 def create_post(
-    request: HttpRequest,
-    caption: str | None = None,
-    themes: list[str] = [],
-    media_url: Form[str] | None = None,
-    media_file: File[UploadedFile] | None = None,
+    request,
+    caption: str = Form(...),
+    media_url: str | None = Form(None),
+    themes: list[str] = Form(...),
+    media_file: UploadedFile | None = File(None),
 ):
-    user = cast(User, request.user)
+    user = request.user
 
     if not media_url and not media_file:
         raise ValidationError(
-            [
-                {
-                    "Must provide either post url or file": "Either media_url or media_file must be provided"
-                }
-            ]
+            [{"detail": "Either media_url or media_file must be provided"}]
         )
 
     with transaction.atomic():
