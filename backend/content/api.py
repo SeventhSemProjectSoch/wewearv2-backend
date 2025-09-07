@@ -1,35 +1,24 @@
 from typing import cast
 
 from django.db import transaction
-from django.db.models import Count
-from django.db.models import Exists
-from django.db.models import OuterRef
-from django.db.models import QuerySet
+from django.db.models import Count, Exists, OuterRef, QuerySet
 from django.http import HttpRequest
-from ninja import File
-from ninja import Router
-from ninja import UploadedFile
+from ninja import File, Form, Router, UploadedFile
 from ninja.errors import ValidationError
 
-from content.models import Comment
-from content.models import Follow
-from content.models import Impression
-from content.models import Like
-from content.models import Post
-from content.models import Save
-from content.models import Share
-from content.schemas import CommentCreateSchema
-from content.schemas import CommentSchema
-from content.schemas import PaginatedCommentsSchema
-from content.schemas import PaginatedPostsSchema
-from content.schemas import PostCreateSchema
-from content.schemas import PostSchema
-from content.schemas import ShareCreateSchema
-from content.schemas import ShareResponseSchema
+from content.models import Comment, Follow, Impression, Like, Post, Save, Share
+from content.schemas import (
+    CommentCreateSchema,
+    CommentSchema,
+    PaginatedCommentsSchema,
+    PaginatedPostsSchema,
+    PostSchema,
+    ShareCreateSchema,
+    ShareResponseSchema,
+)
 from project.schemas import GenericResponse
 from users.auth import JWTAuth
-from users.models import Theme
-from users.models import User
+from users.models import Theme, User
 
 auth = JWTAuth()
 content_router = Router(tags=["Feeds and Interactions"])
@@ -65,9 +54,7 @@ def _serialize_post(user: User, post: Post) -> PostSchema:
     )
 
 
-@content_router.get(
-    "/feeds/foryou/", response=PostSchema | GenericResponse, auth=auth
-)
+@content_router.get("/feeds/foryou/", response=PostSchema | GenericResponse, auth=auth)
 def feed_for_you(request: HttpRequest):
     user = cast(User, request.user)
 
@@ -117,9 +104,7 @@ def feed_for_you(request: HttpRequest):
     return GenericResponse(detail="You have reached the end of content.")
 
 
-@content_router.get(
-    "/feeds/friends/", response=PostSchema | GenericResponse, auth=auth
-)
+@content_router.get("/feeds/friends/", response=PostSchema | GenericResponse, auth=auth)
 def feed_friends(request: HttpRequest):
     user = cast(User, request.user)
     following_ids = Follow.objects.filter(follower=user).values_list(
@@ -137,15 +122,11 @@ def feed_friends(request: HttpRequest):
     return GenericResponse(detail="You have reached the end of content.")
 
 
-@content_router.get(
-    "/feeds/explore/", response=PostSchema | GenericResponse, auth=auth
-)
+@content_router.get("/feeds/explore/", response=PostSchema | GenericResponse, auth=auth)
 def feed_explore(request: HttpRequest):
     user = cast(User, request.user)
     following_ids = set(
-        Follow.objects.filter(follower=user).values_list(
-            "following_id", flat=True
-        )
+        Follow.objects.filter(follower=user).values_list("following_id", flat=True)
     )
     user_theme_ids = set(user.themes.values_list("id", flat=True))
 
@@ -250,9 +231,7 @@ def fetch_comments(
     )
 
 
-@content_router.post(
-    "/interactions/comment/", response=CommentSchema, auth=auth
-)
+@content_router.post("/interactions/comment/", response=CommentSchema, auth=auth)
 def comment_post(request: HttpRequest, payload: CommentCreateSchema):
     user = cast(User, request.user)
     post = Post.objects.filter(id=payload.post_id).first()
@@ -269,9 +248,7 @@ def comment_post(request: HttpRequest, payload: CommentCreateSchema):
     )
 
 
-@content_router.post(
-    "/interactions/share/", response=ShareResponseSchema, auth=auth
-)
+@content_router.post("/interactions/share/", response=ShareResponseSchema, auth=auth)
 def share_post(request: HttpRequest, payload: ShareCreateSchema):
     user = cast(User, request.user)
     post = Post.objects.filter(id=payload.post_id).first()
@@ -285,9 +262,7 @@ def share_post(request: HttpRequest, payload: ShareCreateSchema):
 
 @content_router.get("/share/{slug}/")
 def track_share_click(request: HttpRequest, slug: str):
-    share = (
-        Share.objects.filter(slug=slug).select_related("post", "user").first()
-    )
+    share = Share.objects.filter(slug=slug).select_related("post", "user").first()
     if not share:
         return {"error": "Invalid share link"}
 
@@ -302,12 +277,14 @@ def track_share_click(request: HttpRequest, slug: str):
 @content_router.post("/posts/", auth=auth)
 def create_post(
     request: HttpRequest,
-    post: PostCreateSchema,
+    caption: str | None = None,
+    themes: list[str] = [],
+    media_url: Form[str] | None = None,
     media_file: File[UploadedFile] | None = None,
 ):
     user = cast(User, request.user)
 
-    if not post.media_url and not media_file:
+    if not media_url and not media_file:
         raise ValidationError(
             [
                 {
@@ -317,20 +294,17 @@ def create_post(
         )
 
     with transaction.atomic():
-        post_obj = Post(author=user, caption=post.caption)
+        post_obj = Post(author=user, caption=caption)
 
         if media_file:
             post_obj.media_file = media_file
-        elif post.media_url:
-            post_obj.media_url = post.media_url
+        elif media_url:
+            post_obj.media_url = media_url
 
         post_obj.save()
 
         post_obj.themes.set(
-            [
-                Theme.objects.get_or_create(name=theme_name)[0]
-                for theme_name in post.themes
-            ]
+            [Theme.objects.get_or_create(name=theme_name)[0] for theme_name in themes]
         )
 
     return {
