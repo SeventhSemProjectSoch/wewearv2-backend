@@ -9,7 +9,7 @@ class UserOut(BaseModel):
 
 
 class PostOut(BaseModel):
-    id: int
+    post_id: int
     author_id: str
     author_username: str | None
     caption: str | None

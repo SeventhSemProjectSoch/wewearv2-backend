@@ -140,8 +140,10 @@ class Impression(BaseModel):
     ] = models.ForeignKey(
         Post, on_delete=models.CASCADE, related_name="impressions"
     )
-
+    viewed_at: models.DateTimeField = models.DateTimeField(auto_now_add=True,null=True,blank=True)
+    
     class Meta(BaseModel.Meta):
         indexes = [
             models.Index(fields=["user", "post"]),
+            models.Index(fields=["user", "viewed_at"]),
         ]

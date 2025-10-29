@@ -1,24 +1,43 @@
 from typing import cast
 
 from django.db import transaction
-from django.db.models import Count, Exists, OuterRef, QuerySet
+from django.db.models import Case
+from django.db.models import Count
+from django.db.models import Exists
+from django.db.models import F
+from django.db.models import IntegerField
+from django.db.models import OuterRef
+from django.db.models import Q
+from django.db.models import QuerySet
+from django.db.models import Subquery
+from django.db.models import Value
+from django.db.models import When
 from django.http import HttpRequest
-from ninja import File, Form, Router, UploadedFile
+from django.utils import timezone
+from ninja import File
+from ninja import Form
+from ninja import Router
+from ninja import UploadedFile
 from ninja.errors import ValidationError
 
-from content.models import Comment, Follow, Impression, Like, Post, Save, Share
-from content.schemas import (
-    CommentCreateSchema,
-    CommentSchema,
-    PaginatedCommentsSchema,
-    PaginatedPostsSchema,
-    PostSchema,
-    ShareCreateSchema,
-    ShareResponseSchema,
-)
+from content.models import Comment
+from content.models import Follow
+from content.models import Impression
+from content.models import Like
+from content.models import Post
+from content.models import Save
+from content.models import Share
+from content.schemas import CommentCreateSchema
+from content.schemas import CommentSchema
+from content.schemas import PaginatedCommentsSchema
+from content.schemas import PaginatedPostsSchema
+from content.schemas import PostSchema
+from content.schemas import ShareCreateSchema
+from content.schemas import ShareResponseSchema
 from project.schemas import GenericResponse
 from users.auth import JWTAuth
-from users.models import Theme, User
+from users.models import Theme
+from users.models import User
 
 auth = JWTAuth()
 content_router = Router(tags=["Feeds and Interactions"])
@@ -53,71 +72,140 @@ def _serialize_post(user: User, post: Post) -> PostSchema:
         saved=getattr(post, "saved", False),
     )
 
-
 @content_router.get("/feeds/foryou/", response=PostSchema | GenericResponse, auth=auth)
 def feed_for_you(request: HttpRequest):
     user = cast(User, request.user)
-
-    base_qs = Post.objects.exclude(author=user)
-
-    # FIXME: add user blocking, so blocked user content dosenot appear here
-    # base_qs = base_qs.exclude(id__in=exclude_ids)
-
-    theme_ids = list(user.themes.values_list("id", flat=True))
+    base_qs = Post.objects.exclude(author=user).filter(author__gender=user.gender)
+    user_theme_ids = list(user.themes.values_list("id", flat=True))
     similar_body_type = user.body_type
     similar_height = user.height
     similar_weight = user.weight
-
-    if similar_height:
-        base_qs = base_qs.filter(
-            author__height__gte=similar_height - 5,
-            author__height__lte=similar_height + 5,
+    score_annotations = {}
+    
+    if user_theme_ids:
+        score_annotations['theme_match'] = Count(
+            'themes',
+            filter=Q(themes__id__in=user_theme_ids),
+            distinct=True
         )
-
-    if similar_weight:
-        base_qs = base_qs.filter(
-            author__weight__gte=similar_weight - 5,
-            author__weight__lte=similar_weight + 5,
-        )
-
+    else:
+        score_annotations['theme_match'] = Value(0, output_field=IntegerField())
+    
     if similar_body_type:
-        base_qs = base_qs.filter(
-            author__body_type=similar_body_type,
+        score_annotations['body_type_match'] = Case(
+            When(author__body_type=similar_body_type, then=10),
+            default=0,
+            output_field=IntegerField()
         )
-    if theme_ids:
-        base_qs = base_qs.filter(
-            themes__id__in=theme_ids,
+    else:
+        score_annotations['body_type_match'] = Value(0, output_field=IntegerField())
+    
+    if similar_height:
+        score_annotations['height_match'] = Case(
+            When(
+                author__height__gte=similar_height - 5,
+                author__height__lte=similar_height + 5,
+                then=5
+            ),
+            default=0,
+            output_field=IntegerField()
         )
-
-    # base_qs = base_qs.exclude(
-    #     Exists(Impression.objects.filter(user=user, post=OuterRef("pk")))
-    # )
-    filtered_qs = base_qs.distinct()
-
+    else:
+        score_annotations['height_match'] = Value(0, output_field=IntegerField())
+    
+    if similar_weight:
+        score_annotations['weight_match'] = Case(
+            When(
+                author__weight__gte=similar_weight - 5,
+                author__weight__lte=similar_weight + 5,
+                then=5
+            ),
+            default=0,
+            output_field=IntegerField()
+        )
+    else:
+        score_annotations['weight_match'] = Value(0, output_field=IntegerField())
+    
+    score_annotations['likes_count'] = Count('likes', distinct=True)
+    score_annotations['comments_count'] = Count('comments', distinct=True)
+    score_annotations['shares_count'] = Count('shares', distinct=True)
+    score_annotations['saves_count'] = Count('saves', distinct=True)
+    
+    impression_subquery = Impression.objects.filter(
+        user=user,
+        post=OuterRef('pk')
+    ).values('viewed_at')[:1]
+    
+    filtered_qs = (
+        base_qs
+        .annotate(**score_annotations)
+        .annotate(
+            last_impression=Subquery(impression_subquery),
+            has_impression=Exists(Impression.objects.filter(user=user, post=OuterRef("pk"))),
+            content_score=(
+                F('theme_match') * 10 +
+                F('body_type_match') +
+                F('height_match') +
+                F('weight_match') +
+                F('likes_count') * 3 +
+                F('comments_count') * 5 +
+                F('shares_count') * 7 +
+                F('saves_count') * 4
+            )
+        )
+        .distinct()
+    )
+    
     qs = _get_post_with_interactions(user, filtered_qs)
-
-    post = qs.order_by("?").first()
-
+    post = qs.order_by('has_impression', 'last_impression', '-content_score', '-created_at').first()
+    
     if post:
-        Impression.objects.create(user=user, post=post)
+        Impression.objects.update_or_create(
+            user=user,
+            post=post,
+            defaults={'viewed_at': timezone.now()} 
+        )
         return _serialize_post(user, post)
     return GenericResponse(detail="You have reached the end of content.")
-
-
 @content_router.get("/feeds/friends/", response=PostSchema | GenericResponse, auth=auth)
 def feed_friends(request: HttpRequest):
     user = cast(User, request.user)
     following_ids = Follow.objects.filter(follower=user).values_list(
         "following_id", flat=True
     )
-    qs = Post.objects.filter(author_id__in=following_ids)
-    # qs = qs.exclude(
-    #     Exists(Impression.objects.filter(user=user, post=OuterRef("pk")))
-    # )
+    
+    impression_subquery = Impression.objects.filter(
+        user=user,
+        post=OuterRef('pk')
+    ).values('viewed_at')[:1]
+    
+    qs = (
+        Post.objects.filter(author_id__in=following_ids)
+        .annotate(
+            likes_count=Count('likes', distinct=True),
+            comments_count=Count('comments', distinct=True),
+            shares_count=Count('shares', distinct=True),
+            saves_count=Count('saves', distinct=True),
+            last_impression=Subquery(impression_subquery),
+            has_impression=Exists(Impression.objects.filter(user=user, post=OuterRef("pk"))),
+            engagement_score=(
+                F('likes_count') * 3 +
+                F('comments_count') * 5 +
+                F('shares_count') * 7 +
+                F('saves_count') * 4
+            )
+        )
+    )
+    
     qs = _get_post_with_interactions(user, qs)
-    post = qs.order_by("?").first()
+    post = qs.order_by('has_impression', 'last_impression', '-engagement_score', '-created_at').first()
+    
     if post:
-        Impression.objects.create(user=user, post=post)
+        Impression.objects.update_or_create(
+            user=user,
+            post=post,
+            defaults={'viewed_at': timezone.now()}
+        )
         return _serialize_post(user, post)
     return GenericResponse(detail="You have reached the end of content.")
 
@@ -128,25 +216,50 @@ def feed_explore(request: HttpRequest):
     following_ids = set(
         Follow.objects.filter(follower=user).values_list("following_id", flat=True)
     )
-    user_theme_ids = set(user.themes.values_list("id", flat=True))
 
-    base_qs = Post.objects.exclude(author=user)
-    # base_qs = base_qs.exclude(
-    #     Exists(Impression.objects.filter(user=user, post=OuterRef("pk")))
-    # )
+    base_qs = (
+        Post.objects
+        .exclude(author=user)
+        .exclude(author_id__in=following_ids)
+    )
+    
+    impression_subquery = Impression.objects.filter(
+        user=user,
+        post=OuterRef('pk')
+    ).values('viewed_at')[:1]
+
     filtered_qs = (
-        base_qs.exclude(author_id__in=following_ids)
-        .exclude(themes__id__in=user_theme_ids)
+        base_qs
+        .annotate(
+            likes_count=Count('likes', distinct=True),
+            comments_count=Count('comments', distinct=True),
+            shares_count=Count('shares', distinct=True),
+            saves_count=Count('saves', distinct=True),
+            theme_diversity=Count('themes', distinct=True),
+            last_impression=Subquery(impression_subquery),
+            has_impression=Exists(Impression.objects.filter(user=user, post=OuterRef("pk"))),
+            engagement_score=(
+                F('likes_count') * 3 +
+                F('comments_count') * 5 +
+                F('shares_count') * 7 +
+                F('saves_count') * 4 +
+                F('theme_diversity') * 2
+            )
+        )
         .distinct()
     )
 
     qs = _get_post_with_interactions(user, filtered_qs)
-    post = qs.order_by("?").first()
+    post = qs.order_by('has_impression', 'last_impression', '-engagement_score', '?').first()
+    
     if post:
-        Impression.objects.create(user=user, post=post)
+        Impression.objects.update_or_create(
+            user=user,
+            post=post,
+            defaults={'viewed_at': timezone.now()}
+        )
         return _serialize_post(user, post)
     return GenericResponse(detail="You have reached the end of content.")
-
 
 @content_router.get("/feeds/upload/", response=PaginatedPostsSchema, auth=auth)
 def feed_upload(

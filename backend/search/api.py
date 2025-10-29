@@ -47,7 +47,7 @@ def search_users(
     ]
 
 
-@search_router.get("/posts/", response=list[PostSchema])
+@search_router.get("/posts/", response=list[PostOut])
 def search_posts(
     request: HttpRequest, q: str = "", offset: int = 0, limit: int = 20
 ):
@@ -73,7 +73,7 @@ def search_posts(
     for post in qs:
         results.append(
             PostOut(
-                id=post.id,
+                post_id=post.id,
                 author_id=str(post.author.id),
                 author_username=post.author.username,
                 caption=post.caption,

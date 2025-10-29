@@ -53,7 +53,7 @@ Thank you,
         [identifier],
         fail_silently=False,
     )
-    logger.info(f"Sending OTP {code} to {identifier}")
+    logger.warn(f"Sending OTP {code} to {identifier}")
 
 
 @users_router.post(
