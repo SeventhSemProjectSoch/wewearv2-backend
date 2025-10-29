@@ -54,7 +54,6 @@ class UserAdmin(admin.ModelAdmin[User]):
 
     @admin.display(description="Profile Picture Preview")
     def profile_picture_render(self, obj: User) -> str:
-        print("here")
         url = obj.profile_picture
         if not url:
             return "-"

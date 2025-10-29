@@ -1,3 +1,4 @@
+import logging
 from threading import Thread
 from typing import cast
 
@@ -5,18 +6,24 @@ from django.core.mail import send_mail
 from django.http import HttpRequest
 from ninja import Router
 
-from content.models import Follow, Post
+from content.models import Follow
+from content.models import Post
 from project.env import ENV
 from project.schemas import GenericResponse
-from users.auth import JWTAuth, create_access_token
-from users.models import OTP, BodyType, Theme, User
-from users.schemas import (
-    ProfileSchema,
-    RequestOTPSchema,
-    TokenSchema,
-    UpdateProfileSchema,
-    VerifyOTPSchema,
-)
+from users.auth import JWTAuth
+from users.auth import create_access_token
+from users.models import OTP
+from users.models import BodyType
+from users.models import Theme
+from users.models import User
+from users.schemas import ExistsSchema
+from users.schemas import ProfileSchema
+from users.schemas import RequestOTPSchema
+from users.schemas import TokenSchema
+from users.schemas import UpdateProfileSchema
+from users.schemas import VerifyOTPSchema
+
+logger = logging.getLogger(__name__)
 
 auth = JWTAuth()
 users_router = Router(tags=["Authentication"])
@@ -46,7 +53,7 @@ Thank you,
         [identifier],
         fail_silently=False,
     )
-    print(f"Sending OTP {code} to {identifier}")
+    logger.info(f"Sending OTP {code} to {identifier}")
 
 
 @users_router.post(
@@ -104,10 +111,10 @@ def verify_otp(request: HttpRequest, payload: VerifyOTPSchema):
 
 
 @users_router.post(
-    "/check-exists",
+    "/exists",
      response={200: ExistsSchema},
 )
-def check_if_exists(request: HttpRequest, payload: RequestOTPSchema):
+def check_user_exists(request: HttpRequest, payload: RequestOTPSchema):
     exists = User.objects.filter(email=payload.email.strip()).exists()
     return 200, ExistsSchema(exists=exists, email=payload.email)
 

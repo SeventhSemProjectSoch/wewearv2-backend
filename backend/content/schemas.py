@@ -1,13 +1,6 @@
 from datetime import datetime
 
-from ninja import Form
 from ninja import Schema
-
-
-class PostCreateSchema(Schema):
-    caption: str | None = None
-    themes: list[str]
-    media_url: Form[str] | None = None
 
 
 class PostSchema(Schema):
