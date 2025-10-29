@@ -51,17 +51,22 @@ def search_users(
 def search_posts(
     request: HttpRequest, q: str = "", offset: int = 0, limit: int = 20
 ):
-    theme_matches = Theme.objects.filter(name__icontains=q).values_list(
-        "id", flat=True
-    )
-
-    qs = (
-        Post.objects.filter(
-            Q(themes__in=theme_matches) | Q(caption__icontains=q)
+    if not q:
+        qs = Post.objects.all().order_by('-created_at')
+    else:
+        words = q.split()
+        
+        query = Q()
+        for word in words:
+            query |= Q(caption__icontains=word) | Q(themes__name__icontains=word)
+        
+        qs = (
+            Post.objects.filter(query)
+            .distinct()
+            .order_by('-created_at')
         )
-        .distinct()
-        .order_by("-created_at")[offset : offset + limit]
-    )
+    
+    qs = qs[offset : offset + limit]
     qs = qs.prefetch_related("themes", "author")
 
     results: list[PostOut] = []
