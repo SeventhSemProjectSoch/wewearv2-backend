@@ -103,6 +103,14 @@ def verify_otp(request: HttpRequest, payload: VerifyOTPSchema):
     return 200, TokenSchema(**{"access_token": token})
 
 
+@users_router.post(
+    "/check-exists",
+     response={200: ExistsSchema},
+)
+def check_if_exists(request: HttpRequest, payload: RequestOTPSchema):
+    exists = User.objects.filter(email=payload.email.strip()).exists()
+    return 200, ExistsSchema(exists=exists, email=payload.email)
+
 @profile_router.get("/profile", response=ProfileSchema, auth=auth)
 def get_profile(request: HttpRequest):
     user: User = cast(User, request.user)

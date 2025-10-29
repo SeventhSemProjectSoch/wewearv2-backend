@@ -50,3 +50,7 @@ class VerifyOTPSchema(Schema):
 class TokenSchema(Schema):
     access_token: str
     token_type: str = "bearer"
+
+class ExistsSchema(Schema):
+    exists: bool
+    email: str
