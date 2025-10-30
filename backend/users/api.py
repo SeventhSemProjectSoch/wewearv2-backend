@@ -31,6 +31,10 @@ profile_router = Router(tags=["Profile"])
 meta_router = Router(tags=["Meta"])
 
 
+def send_mail(*a, **aa):
+    pass
+
+
 def send_otp(identifier: str, code: str):
     send_mail(
         "Your One-Time Password (OTP)",
@@ -112,11 +116,12 @@ def verify_otp(request: HttpRequest, payload: VerifyOTPSchema):
 
 @users_router.post(
     "/exists",
-     response={200: ExistsSchema},
+    response={200: ExistsSchema},
 )
 def check_user_exists(request: HttpRequest, payload: RequestOTPSchema):
     exists = User.objects.filter(email=payload.email.strip()).exists()
     return 200, ExistsSchema(exists=exists, email=payload.email)
+
 
 @profile_router.get("/profile", response=ProfileSchema, auth=auth)
 def get_profile(request: HttpRequest):
@@ -170,7 +175,7 @@ def update_profile(request: HttpRequest, payload: UpdateProfileSchema):
 @profile_router.get(
     "/profile/{user_id}/", response=ProfileSchema | GenericResponse, auth=auth
 )
-def get_user_by_id(request: HttpRequest, user_id: int):
+def get_user_by_id(request: HttpRequest, user_id: str):
     user = User.objects.filter(id=user_id).first()
     if not user:
         return GenericResponse(detail="User not found")

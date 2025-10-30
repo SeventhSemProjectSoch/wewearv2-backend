@@ -13,7 +13,7 @@ auth = JWTAuth()
 
 
 @follow_router.post("/follow/{user_id}/", response=GenericResponse, auth=auth)
-def follow_user(request: HttpRequest, user_id: int):
+def follow_user(request: HttpRequest, user_id: str):
     user = cast(User, request.user)
     target = User.objects.filter(id=user_id).first()
     if not target:
@@ -25,10 +25,8 @@ def follow_user(request: HttpRequest, user_id: int):
     return GenericResponse(detail=f"You are now following {target.id}")
 
 
-@follow_router.delete(
-    "/follow/{user_id}/", response=GenericResponse, auth=auth
-)
-def unfollow_user(request: HttpRequest, user_id: int):
+@follow_router.delete("/follow/{user_id}/", response=GenericResponse, auth=auth)
+def unfollow_user(request: HttpRequest, user_id: str):
     user = cast(User, request.user)
     target = User.objects.filter(id=user_id).first()
     if not target:
@@ -39,7 +37,7 @@ def unfollow_user(request: HttpRequest, user_id: int):
 
 
 @follow_router.get("/followers/{user_id}/", response=list[str], auth=auth)
-def list_followers(request: HttpRequest, user_id: int) -> list[str]:
+def list_followers(request: HttpRequest, user_id: str) -> list[str]:
     target = User.objects.filter(id=user_id).first()
     if not target:
         return []
@@ -50,7 +48,7 @@ def list_followers(request: HttpRequest, user_id: int) -> list[str]:
 
 
 @follow_router.get("/following/{user_id}/", response=list[str], auth=auth)
-def list_following(request: HttpRequest, user_id: int) -> list[str]:
+def list_following(request: HttpRequest, user_id: str) -> list[str]:
     target = User.objects.filter(id=user_id).first()
     if not target:
         return []
