@@ -72,6 +72,7 @@ def _serialize_post(user: User, post: Post) -> PostSchema:
         saved=getattr(post, "saved", False),
     )
 
+
 @content_router.get("/feeds/foryou/", response=PostSchema | GenericResponse, auth=auth)
 def feed_for_you(request: HttpRequest):
     user = cast(User, request.user)
@@ -81,130 +82,128 @@ def feed_for_you(request: HttpRequest):
     similar_height = user.height
     similar_weight = user.weight
     score_annotations = {}
-    
+
     if user_theme_ids:
-        score_annotations['theme_match'] = Count(
-            'themes',
-            filter=Q(themes__id__in=user_theme_ids),
-            distinct=True
+        score_annotations["theme_match"] = Count(
+            "themes", filter=Q(themes__id__in=user_theme_ids), distinct=True
         )
     else:
-        score_annotations['theme_match'] = Value(0, output_field=IntegerField())
-    
+        score_annotations["theme_match"] = Value(0, output_field=IntegerField())
+
     if similar_body_type:
-        score_annotations['body_type_match'] = Case(
+        score_annotations["body_type_match"] = Case(
             When(author__body_type=similar_body_type, then=10),
             default=0,
-            output_field=IntegerField()
+            output_field=IntegerField(),
         )
     else:
-        score_annotations['body_type_match'] = Value(0, output_field=IntegerField())
-    
+        score_annotations["body_type_match"] = Value(0, output_field=IntegerField())
+
     if similar_height:
-        score_annotations['height_match'] = Case(
+        score_annotations["height_match"] = Case(
             When(
                 author__height__gte=similar_height - 5,
                 author__height__lte=similar_height + 5,
-                then=5
+                then=5,
             ),
             default=0,
-            output_field=IntegerField()
+            output_field=IntegerField(),
         )
     else:
-        score_annotations['height_match'] = Value(0, output_field=IntegerField())
-    
+        score_annotations["height_match"] = Value(0, output_field=IntegerField())
+
     if similar_weight:
-        score_annotations['weight_match'] = Case(
+        score_annotations["weight_match"] = Case(
             When(
                 author__weight__gte=similar_weight - 5,
                 author__weight__lte=similar_weight + 5,
-                then=5
+                then=5,
             ),
             default=0,
-            output_field=IntegerField()
+            output_field=IntegerField(),
         )
     else:
-        score_annotations['weight_match'] = Value(0, output_field=IntegerField())
-    
-    score_annotations['likes_count'] = Count('likes', distinct=True)
-    score_annotations['comments_count'] = Count('comments', distinct=True)
-    score_annotations['shares_count'] = Count('shares', distinct=True)
-    score_annotations['saves_count'] = Count('saves', distinct=True)
-    
+        score_annotations["weight_match"] = Value(0, output_field=IntegerField())
+
+    score_annotations["likes_count"] = Count("likes", distinct=True)
+    score_annotations["comments_count"] = Count("comments", distinct=True)
+    score_annotations["shares_count"] = Count("shares", distinct=True)
+    score_annotations["saves_count"] = Count("saves", distinct=True)
+
     impression_subquery = Impression.objects.filter(
-        user=user,
-        post=OuterRef('pk')
-    ).values('viewed_at')[:1]
-    
+        user=user, post=OuterRef("pk")
+    ).values("viewed_at")[:1]
+
     filtered_qs = (
-        base_qs
-        .annotate(**score_annotations)
+        base_qs.annotate(**score_annotations)
         .annotate(
             last_impression=Subquery(impression_subquery),
-            has_impression=Exists(Impression.objects.filter(user=user, post=OuterRef("pk"))),
+            has_impression=Exists(
+                Impression.objects.filter(user=user, post=OuterRef("pk"))
+            ),
             content_score=(
-                F('theme_match') * 10 +
-                F('body_type_match') +
-                F('height_match') +
-                F('weight_match') +
-                F('likes_count') * 3 +
-                F('comments_count') * 5 +
-                F('shares_count') * 7 +
-                F('saves_count') * 4
-            )
+                F("theme_match") * 10
+                + F("body_type_match")
+                + F("height_match")
+                + F("weight_match")
+                + F("likes_count") * 3
+                + F("comments_count") * 5
+                + F("shares_count") * 7
+                + F("saves_count") * 4
+            ),
         )
         .distinct()
     )
-    
+
     qs = _get_post_with_interactions(user, filtered_qs)
-    post = qs.order_by('has_impression', 'last_impression', '-content_score', '-created_at').first()
-    
+    post = qs.order_by(
+        "has_impression", "last_impression", "-content_score", "-created_at"
+    ).first()
+
     if post:
         Impression.objects.update_or_create(
-            user=user,
-            post=post,
-            defaults={'viewed_at': timezone.now()} 
+            user=user, post=post, defaults={"viewed_at": timezone.now()}
         )
         return _serialize_post(user, post)
     return GenericResponse(detail="You have reached the end of content.")
+
+
 @content_router.get("/feeds/friends/", response=PostSchema | GenericResponse, auth=auth)
 def feed_friends(request: HttpRequest):
     user = cast(User, request.user)
     following_ids = Follow.objects.filter(follower=user).values_list(
         "following_id", flat=True
     )
-    
+
     impression_subquery = Impression.objects.filter(
-        user=user,
-        post=OuterRef('pk')
-    ).values('viewed_at')[:1]
-    
-    qs = (
-        Post.objects.filter(author_id__in=following_ids)
-        .annotate(
-            likes_count=Count('likes', distinct=True),
-            comments_count=Count('comments', distinct=True),
-            shares_count=Count('shares', distinct=True),
-            saves_count=Count('saves', distinct=True),
-            last_impression=Subquery(impression_subquery),
-            has_impression=Exists(Impression.objects.filter(user=user, post=OuterRef("pk"))),
-            engagement_score=(
-                F('likes_count') * 3 +
-                F('comments_count') * 5 +
-                F('shares_count') * 7 +
-                F('saves_count') * 4
-            )
-        )
+        user=user, post=OuterRef("pk")
+    ).values("viewed_at")[:1]
+
+    qs = Post.objects.filter(author_id__in=following_ids).annotate(
+        likes_count=Count("likes", distinct=True),
+        comments_count=Count("comments", distinct=True),
+        shares_count=Count("shares", distinct=True),
+        saves_count=Count("saves", distinct=True),
+        last_impression=Subquery(impression_subquery),
+        has_impression=Exists(
+            Impression.objects.filter(user=user, post=OuterRef("pk"))
+        ),
+        engagement_score=(
+            F("likes_count") * 3
+            + F("comments_count") * 5
+            + F("shares_count") * 7
+            + F("saves_count") * 4
+        ),
     )
-    
+
     qs = _get_post_with_interactions(user, qs)
-    post = qs.order_by('has_impression', 'last_impression', '-engagement_score', '-created_at').first()
-    
+    post = qs.order_by(
+        "has_impression", "last_impression", "-engagement_score", "-created_at"
+    ).first()
+
     if post:
         Impression.objects.update_or_create(
-            user=user,
-            post=post,
-            defaults={'viewed_at': timezone.now()}
+            user=user, post=post, defaults={"viewed_at": timezone.now()}
         )
         return _serialize_post(user, post)
     return GenericResponse(detail="You have reached the end of content.")
@@ -217,49 +216,43 @@ def feed_explore(request: HttpRequest):
         Follow.objects.filter(follower=user).values_list("following_id", flat=True)
     )
 
-    base_qs = (
-        Post.objects
-        .exclude(author=user)
-        .exclude(author_id__in=following_ids)
-    )
-    
-    impression_subquery = Impression.objects.filter(
-        user=user,
-        post=OuterRef('pk')
-    ).values('viewed_at')[:1]
+    base_qs = Post.objects.exclude(author=user).exclude(author_id__in=following_ids)
 
-    filtered_qs = (
-        base_qs
-        .annotate(
-            likes_count=Count('likes', distinct=True),
-            comments_count=Count('comments', distinct=True),
-            shares_count=Count('shares', distinct=True),
-            saves_count=Count('saves', distinct=True),
-            theme_diversity=Count('themes', distinct=True),
-            last_impression=Subquery(impression_subquery),
-            has_impression=Exists(Impression.objects.filter(user=user, post=OuterRef("pk"))),
-            engagement_score=(
-                F('likes_count') * 3 +
-                F('comments_count') * 5 +
-                F('shares_count') * 7 +
-                F('saves_count') * 4 +
-                F('theme_diversity') * 2
-            )
-        )
-        .distinct()
-    )
+    impression_subquery = Impression.objects.filter(
+        user=user, post=OuterRef("pk")
+    ).values("viewed_at")[:1]
+
+    filtered_qs = base_qs.annotate(
+        likes_count=Count("likes", distinct=True),
+        comments_count=Count("comments", distinct=True),
+        shares_count=Count("shares", distinct=True),
+        saves_count=Count("saves", distinct=True),
+        theme_diversity=Count("themes", distinct=True),
+        last_impression=Subquery(impression_subquery),
+        has_impression=Exists(
+            Impression.objects.filter(user=user, post=OuterRef("pk"))
+        ),
+        engagement_score=(
+            F("likes_count") * 3
+            + F("comments_count") * 5
+            + F("shares_count") * 7
+            + F("saves_count") * 4
+            + F("theme_diversity") * 2
+        ),
+    ).distinct()
 
     qs = _get_post_with_interactions(user, filtered_qs)
-    post = qs.order_by('has_impression', 'last_impression', '-engagement_score', '?').first()
-    
+    post = qs.order_by(
+        "has_impression", "last_impression", "-engagement_score", "?"
+    ).first()
+
     if post:
         Impression.objects.update_or_create(
-            user=user,
-            post=post,
-            defaults={'viewed_at': timezone.now()}
+            user=user, post=post, defaults={"viewed_at": timezone.now()}
         )
         return _serialize_post(user, post)
     return GenericResponse(detail="You have reached the end of content.")
+
 
 @content_router.get("/feeds/upload/", response=PaginatedPostsSchema, auth=auth)
 def feed_upload(
@@ -439,3 +432,25 @@ def get_post_by_id(request: HttpRequest, post_id: int):
 
     Impression.objects.get_or_create(user=user, post=post)
     return _serialize_post(user, post)
+
+
+@content_router.get("/posts/user/{user_id}/", response=list[PostSchema], auth=auth)
+def get_post_by_user_id(request: HttpRequest, user_id: str):
+    user = cast(User, request.user)
+    post_qs = Post.objects.filter(author__id=user_id).order_by("-created_at")
+
+    if not post_qs.exists():
+        return []
+
+    qs = _get_post_with_interactions(user, post_qs)
+    posts = list(qs)
+
+    if not posts:
+        return []
+
+    return_posts: list[PostSchema] = []
+    # Record impressions for all posts
+    for post in posts:
+        return_posts.append(_serialize_post(user, post))
+
+    return return_posts

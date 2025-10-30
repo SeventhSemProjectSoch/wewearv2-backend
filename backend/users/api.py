@@ -6,22 +6,19 @@ from django.core.mail import send_mail
 from django.http import HttpRequest
 from ninja import Router
 
-from content.models import Follow
-from content.models import Post
+from content.models import Follow, Post
 from project.env import ENV
 from project.schemas import GenericResponse
-from users.auth import JWTAuth
-from users.auth import create_access_token
-from users.models import OTP
-from users.models import BodyType
-from users.models import Theme
-from users.models import User
-from users.schemas import ExistsSchema
-from users.schemas import ProfileSchema
-from users.schemas import RequestOTPSchema
-from users.schemas import TokenSchema
-from users.schemas import UpdateProfileSchema
-from users.schemas import VerifyOTPSchema
+from users.auth import JWTAuth, create_access_token
+from users.models import OTP, BodyType, Theme, User
+from users.schemas import (
+    ExistsSchema,
+    ProfileSchema,
+    RequestOTPSchema,
+    TokenSchema,
+    UpdateProfileSchema,
+    VerifyOTPSchema,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -31,8 +28,8 @@ profile_router = Router(tags=["Profile"])
 meta_router = Router(tags=["Meta"])
 
 
-def send_mail(*a, **aa):
-    pass
+# def send_mail(*a, **aa):
+#     pass
 
 
 def send_otp(identifier: str, code: str):
