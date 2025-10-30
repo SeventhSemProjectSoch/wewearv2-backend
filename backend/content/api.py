@@ -1,43 +1,38 @@
 from typing import cast
 
 from django.db import transaction
-from django.db.models import Case
-from django.db.models import Count
-from django.db.models import Exists
-from django.db.models import F
-from django.db.models import IntegerField
-from django.db.models import OuterRef
-from django.db.models import Q
-from django.db.models import QuerySet
-from django.db.models import Subquery
-from django.db.models import Value
-from django.db.models import When
+from django.db.models import (
+    Case,
+    Count,
+    Exists,
+    F,
+    IntegerField,
+    OuterRef,
+    Q,
+    QuerySet,
+    Subquery,
+    Value,
+    When,
+)
 from django.http import HttpRequest
 from django.utils import timezone
-from ninja import File
-from ninja import Form
-from ninja import Router
-from ninja import UploadedFile
+from ninja import File, Form, Router, UploadedFile
 from ninja.errors import ValidationError
-
-from content.models import Comment
-from content.models import Follow
-from content.models import Impression
-from content.models import Like
-from content.models import Post
-from content.models import Save
-from content.models import Share
-from content.schemas import CommentCreateSchema
-from content.schemas import CommentSchema
-from content.schemas import PaginatedCommentsSchema
-from content.schemas import PaginatedPostsSchema
-from content.schemas import PostSchema
-from content.schemas import ShareCreateSchema
-from content.schemas import ShareResponseSchema
 from project.schemas import GenericResponse
 from users.auth import JWTAuth
-from users.models import Theme
-from users.models import User
+from users.models import Theme, User
+from utils.video import process_post_video_async
+
+from content.models import Comment, Follow, Impression, Like, Post, Save, Share
+from content.schemas import (
+    CommentCreateSchema,
+    CommentSchema,
+    PaginatedCommentsSchema,
+    PaginatedPostsSchema,
+    PostSchema,
+    ShareCreateSchema,
+    ShareResponseSchema,
+)
 
 auth = JWTAuth()
 content_router = Router(tags=["Feeds and Interactions"])
@@ -382,11 +377,11 @@ def track_share_click(request: HttpRequest, slug: str):
 
 @content_router.post("/posts/", auth=auth)
 def create_post(
-    request,
-    caption: str = Form(...),
-    media_url: str | None = Form(None),
-    themes: list[str] = Form(...),
-    media_file: UploadedFile | None = File(None),
+    request: HttpRequest,
+    caption: str = Form(...),  # type:ignore
+    media_url: str | None = Form(None),  # type:ignore
+    themes: list[str] = Form(...),  # type:ignore
+    media_file: UploadedFile | None = File(None),  # type:ignore
 ):
     user = request.user
 
@@ -409,6 +404,7 @@ def create_post(
             [Theme.objects.get_or_create(name=theme_name)[0] for theme_name in themes]
         )
 
+    process_post_video_async(post_obj)
     return {
         "id": post_obj.id,
         "media": post_obj.media(),
@@ -437,19 +433,17 @@ def get_post_by_id(request: HttpRequest, post_id: int):
 @content_router.get("/posts/user/{user_id}/", response=list[PostSchema], auth=auth)
 def get_post_by_user_id(request: HttpRequest, user_id: str):
     user = cast(User, request.user)
+    return_posts: list[PostSchema] = []
     post_qs = Post.objects.filter(author__id=user_id).order_by("-created_at")
 
     if not post_qs.exists():
-        return []
+        return return_posts
 
     qs = _get_post_with_interactions(user, post_qs)
     posts = list(qs)
-
     if not posts:
-        return []
+        return return_posts
 
-    return_posts: list[PostSchema] = []
-    # Record impressions for all posts
     for post in posts:
         return_posts.append(_serialize_post(user, post))
 

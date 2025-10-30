@@ -11,6 +11,7 @@ dependencies = [
     "django-stubs-ext",
     "django-types",
     "gunicorn",
+    "opencv-python>=4.12.0.88",
     "pillow",
     "psycopg2-binary",
     "puremagic",
@@ -18,10 +19,11 @@ dependencies = [
     "pydantic-settings",
     "PyJWT",
     "whitenoise",
+    "requests",
 ]
 
 [project.optional-dependencies]
-dev = ["pyright","pre-commit"]
+dev = ["pyright", "pre-commit"]
 
 [tool.isort]
 profile = "black"

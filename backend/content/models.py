@@ -1,12 +1,10 @@
 import uuid
 from typing import Any
 
+from core.models import BaseModel
 from django.core.files.storage import FileSystemStorage
 from django.db import models
-
-from core.models import BaseModel
-from users.models import Theme
-from users.models import User
+from users.models import Theme, User
 
 media_storage = FileSystemStorage(location="media")
 
@@ -32,6 +30,9 @@ class Post(BaseModel):
     themes: models.ManyToManyField[Theme, Theme] = models.ManyToManyField(
         Theme, related_name="posts"
     )
+    ai_captioned: models.BooleanField[bool, bool] = models.BooleanField(
+        default=False, null=True, blank=True
+    )
 
     def media(self) -> str:
         if self.media_file:
@@ -46,15 +47,11 @@ class Follow(BaseModel):
     follower: models.ForeignKey[
         User,
         User,
-    ] = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="following"
-    )
+    ] = models.ForeignKey(User, on_delete=models.CASCADE, related_name="following")
     following: models.ForeignKey[
         User,
         User,
-    ] = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="followers"
-    )
+    ] = models.ForeignKey(User, on_delete=models.CASCADE, related_name="followers")
 
     class Meta(BaseModel.Meta):
         unique_together = ("follower", "following")
@@ -92,15 +89,11 @@ class Comment(BaseModel):
     user: models.ForeignKey[
         User,
         User,
-    ] = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="comments"
-    )
+    ] = models.ForeignKey(User, on_delete=models.CASCADE, related_name="comments")
     post: models.ForeignKey[
         Post,
         Post,
-    ] = models.ForeignKey(
-        Post, on_delete=models.CASCADE, related_name="comments"
-    )
+    ] = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="comments")
     text: models.TextField[str, str] = models.TextField()
 
 
@@ -108,15 +101,11 @@ class Share(BaseModel):
     user: models.ForeignKey[
         User,
         User,
-    ] = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="shares"
-    )
+    ] = models.ForeignKey(User, on_delete=models.CASCADE, related_name="shares")
     post: models.ForeignKey[
         Post,
         Post,
-    ] = models.ForeignKey(
-        Post, on_delete=models.CASCADE, related_name="shares"
-    )
+    ] = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="shares")
     slug: models.CharField[str, str] = models.CharField(
         max_length=8, unique=True, db_index=True
     )
@@ -131,17 +120,15 @@ class Impression(BaseModel):
     user: models.ForeignKey[
         User,
         User,
-    ] = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="impressions"
-    )
+    ] = models.ForeignKey(User, on_delete=models.CASCADE, related_name="impressions")
     post: models.ForeignKey[
         Post,
         Post,
-    ] = models.ForeignKey(
-        Post, on_delete=models.CASCADE, related_name="impressions"
+    ] = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="impressions")
+    viewed_at: models.DateTimeField[str, str] = models.DateTimeField(
+        auto_now_add=True, null=True, blank=True
     )
-    viewed_at: models.DateTimeField = models.DateTimeField(auto_now_add=True,null=True,blank=True)
-    
+
     class Meta(BaseModel.Meta):
         indexes = [
             models.Index(fields=["user", "post"]),

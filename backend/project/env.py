@@ -1,8 +1,7 @@
 from pathlib import Path
 from secrets import token_urlsafe
 
-from pydantic_settings import BaseSettings
-from pydantic_settings import SettingsConfigDict
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Environment(BaseSettings):
@@ -25,6 +24,7 @@ class Environment(BaseSettings):
     ACCESS_TOKEN_EXPIRE_DAYS: int = 30
     SMTP_PASSWORD: str | None = None
     SMTP_EMAIL: str | None = None
+    GEMINI_API_KEY: str = ""
 
 
 ENV = Environment()
