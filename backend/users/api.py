@@ -2,11 +2,10 @@ import logging
 from threading import Thread
 from typing import cast
 
+from content.models import Follow, Post
 from django.core.mail import send_mail
 from django.http import HttpRequest
 from ninja import Router
-
-from content.models import Follow, Post
 from project.env import ENV
 from project.schemas import GenericResponse
 from users.auth import JWTAuth, create_access_token
@@ -54,7 +53,7 @@ Thank you,
         [identifier],
         fail_silently=False,
     )
-    logger.warn(f"Sending OTP {code} to {identifier}")
+    logger.warning(f"Sending OTP {code} to {identifier}")
 
 
 @users_router.post(

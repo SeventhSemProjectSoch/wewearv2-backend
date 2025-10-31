@@ -1,8 +1,6 @@
 import uuid
 
-from ninja import ModelSchema
-from ninja import Schema
-
+from ninja import ModelSchema, Schema
 from users.models import Theme
 
 
@@ -21,6 +19,7 @@ class ProfileSchema(Schema):
     body_type: str | None = None
     height: float | None = None
     weight: float | None = None
+    gender: str | None = None
     themes: list[str]
     followers_count: int
     following_count: int
@@ -35,6 +34,7 @@ class UpdateProfileSchema(Schema):
     body_type: str | None = None
     height: float | None = None
     weight: float | None = None
+    gender: str | None = None
     themes: list[str] = []
 
 
@@ -50,6 +50,7 @@ class VerifyOTPSchema(Schema):
 class TokenSchema(Schema):
     access_token: str
     token_type: str = "bearer"
+
 
 class ExistsSchema(Schema):
     exists: bool

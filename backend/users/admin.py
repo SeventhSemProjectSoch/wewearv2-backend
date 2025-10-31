@@ -1,13 +1,12 @@
 from django.contrib import admin
 from django.utils.html import format_html
+from project.forms import (
+    ComponentBaseForm,
+    DataListFormComponent,
+    ImageUploadFormComponent,
+)
 
-from project.forms import ComponentBaseForm
-from project.forms import DataListFormComponent
-from project.forms import ImageUploadFormComponent
-
-from .models import BodyType
-from .models import Theme
-from .models import User
+from .models import BodyType, Theme, User
 
 
 @admin.register(User)
@@ -49,8 +48,8 @@ class UserAdmin(admin.ModelAdmin[User]):
             },
         ),
     )
-    list_filter = ("gender", "body_type", "themes")
-    list_display = ("email", "profile_picture_render")
+    list_filter = ("gender", "body_type", "themes", "height", "weight")
+    list_display = ("height", "weight", "gender", "profile_picture_render", "email")
 
     @admin.display(description="Profile Picture Preview")
     def profile_picture_render(self, obj: User) -> str:
