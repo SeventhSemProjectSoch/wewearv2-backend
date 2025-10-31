@@ -18,10 +18,6 @@ from django.http import HttpRequest
 from django.utils import timezone
 from ninja import File, Form, Router, UploadedFile
 from ninja.errors import ValidationError
-from project.schemas import GenericResponse
-from users.auth import JWTAuth
-from users.models import Theme, User
-from utils.video import process_post_video_async
 
 from content.models import Comment, Follow, Impression, Like, Post, Save, Share
 from content.schemas import (
@@ -33,6 +29,10 @@ from content.schemas import (
     ShareCreateSchema,
     ShareResponseSchema,
 )
+from project.schemas import GenericResponse
+from users.auth import JWTAuth
+from users.models import Theme, User
+from utils.video import process_post_video_async
 
 auth = JWTAuth()
 content_router = Router(tags=["Feeds and Interactions"])
