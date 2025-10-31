@@ -180,7 +180,6 @@ def get_user_by_id(request: HttpRequest, user_id: str):
     followers_count = Follow.objects.filter(following=user).count()
     following_count = Follow.objects.filter(follower=user).count()
     posts_count = Post.objects.filter(author=user).count()
-
     return ProfileSchema(
         id=user.id,
         username=user.username,
@@ -194,6 +193,9 @@ def get_user_by_id(request: HttpRequest, user_id: str):
         followers_count=followers_count,
         following_count=following_count,
         posts_count=posts_count,
+        is_following=Follow.objects.filter(
+            follower=request.user, following=user
+        ).exists(),
     )
 
 

@@ -87,7 +87,7 @@ def feed_for_you(request: HttpRequest):
 
     if similar_body_type:
         score_annotations["body_type_match"] = Case(
-            When(author__body_type=similar_body_type, then=10),
+            When(author__body_type=similar_body_type, then=1000),
             default=0,
             output_field=IntegerField(),
         )
@@ -99,7 +99,7 @@ def feed_for_you(request: HttpRequest):
             When(
                 author__height__gte=similar_height - 30,
                 author__height__lte=similar_height + 30,
-                then=5,
+                then=100,
             ),
             default=0,
             output_field=IntegerField(),
@@ -112,7 +112,7 @@ def feed_for_you(request: HttpRequest):
             When(
                 author__weight__gte=similar_weight - 15,
                 author__weight__lte=similar_weight + 15,
-                then=5,
+                then=50,
             ),
             default=0,
             output_field=IntegerField(),

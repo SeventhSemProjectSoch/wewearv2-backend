@@ -24,6 +24,7 @@ class ProfileSchema(Schema):
     followers_count: int
     following_count: int
     posts_count: int
+    is_following: bool = False
 
 
 class UpdateProfileSchema(Schema):
