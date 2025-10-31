@@ -140,6 +140,7 @@ def get_profile(request: HttpRequest):
         followers_count=followers_count,
         following_count=following_count,
         posts_count=posts_count,
+        gender=user.gender,
     )
 
 
